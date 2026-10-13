@@ -120,6 +120,7 @@ class EngineDSP {
     this.iLen = ms(it.runnerMs); this.irun = new FDelay(this.iLen * 1.6 + 4); this.ilp = 0;
     this.plenum = new Biquad().set('bp', it.hz, it.q, sr); this.plenumHz = it.hz;
     this.roarBp = new Biquad().set('bp', it.hz * 2.5, 0.8, sr);
+    this.hissBp = new Biquad().set('bp', 3600, 1.6, sr);
     this.blockLp = new Biquad().set('lp', cfg.blockHz, 0.9, sr);
     this.blockLp2 = new Biquad().set('lp', cfg.blockHz * 1.4, 0.6, sr);
     this.clickHp = new Biquad().set('hp', 4500, 0.7, sr);
@@ -158,6 +159,7 @@ class EngineDSP {
     this.rpmT = p.rpm; this.loadT = p.load; this.fuelCut = !!p.fuelCut;
     this.starter = !!p.starter; this.crackleBoost = p.crackleBoost || 0;
     this.speed = p.speed || 0; this.cabin = p.listen !== 'outside';
+    this.sport = !!p.sport;
   }
 
   // Everything that follows rpm, load and temperature, refreshed every 32 samples.
@@ -179,7 +181,8 @@ class EngineDSP {
     for (const b of this.banks) b.tone.set('lp', fc, 0.75, sr);
 
     if (c.valve) {
-      const open = this.rpm > c.valve.rpm || this.load > c.valve.load;
+      // Sport holds the bypass valves open; Comfort opens them only when the engine is working.
+      const open = this.sport || this.rpm > c.valve.rpm || this.load > c.valve.load;
       const close = this.rpm < c.valve.rpm * 0.85 && this.load < c.valve.load * 0.7;
       if (open) this.valveOpen = true; else if (close) this.valveOpen = false;
       this.vmix += ((this.valveOpen ? 1 : 0) - this.vmix) * blk / 0.15;
@@ -233,14 +236,15 @@ class EngineDSP {
       c.amp = 0.1 * (0.4 + this.rpm / cfg.redline); c.mix = 0; // compression only, no combustion
       c.nz = cfg.overrunAir * (0.3 + this.rpm / cfg.redline); // air pumped through: the hollow overrun burble
       if (this.rpm > 1800) {
-        const pr = cfg.crackle * (0.25 + this.rpm / cfg.redline) + this.crackleBoost;
+        const pr = cfg.crackle * (this.sport ? 1 : 0.25) * (0.25 + this.rpm / cfg.redline) + this.crackleBoost;
         if (Math.random() < pr) {
           const big = Math.random() < 0.15;
           this.crackles.push({ wait: (0.002 + Math.random() * 0.03) * this.sr, bank: c.bank, amp: big ? 1.4 + Math.random() : 0.3 + Math.random() * 0.7 });
         }
       }
     } else {
-      c.amp = (0.25 + 0.75 * Math.pow(this.load, 0.7)) * c.gain * (1 + this.jit * rnd() + 0.05 * c.drift);
+      // Cylinder pressure follows throttle: cruise is around 10 dB below full load at the same revs.
+      c.amp = (0.09 + 0.91 * Math.pow(this.load, cfg.dyn || 1.35)) * c.gain * (1 + this.jit * rnd() + 0.05 * c.drift);
       c.mix = Math.pow(this.load, 0.7);
       c.nz = c.amp * cfg.noise * (0.3 + this.load);
     }
@@ -357,7 +361,10 @@ class EngineDSP {
       const iy = intake - 0.4 * this.ilp;
       this.irun.write(iy);
       this.env += (Math.abs(raw) - this.env) * 0.01;
-      const induction = this.plenum.run(iy) * 1.6 + this.roarBp.run(rnd()) * this.env * load * (0.2 + rn) * it.roar;
+      // Part throttle: air squeezing past a nearly closed throttle plate gives a faint hiss.
+      const partOpen = load > 0.03 && !this.fuelCut ? Math.exp(-((load - 0.18) ** 2) / 0.02) : 0;
+      const induction = this.plenum.run(iy) * 1.6 + this.roarBp.run(rnd()) * this.env * load * (0.2 + rn) * it.roar
+        + this.hissBp.run(rnd()) * this.env * partOpen * (0.3 + rn) * (it.hiss ?? 0.05);
 
       // Engine block and valvetrain.
       const blk = this.blockLp2.run(this.blockLp.run(raw)) * cfg.blockGain;
@@ -398,7 +405,7 @@ class EngineDSP {
       if (cfg.actuator && this.cabin && !this.fuelCut) {
         // Audi-style cabin sound actuator: reinforces the firing order through the body.
         this.aph += rpm / 60 * cyl.length / 2 / sr; if (this.aph > 1) this.aph -= 1;
-        extra += (Math.sin(TAU * this.aph) + 0.4 * Math.sin(2 * TAU * this.aph)) * cfg.actuator * Math.pow(load, 0.7) * clamp(rpm / 1500, 0, 1);
+        extra += (Math.sin(TAU * this.aph) + 0.4 * Math.sin(2 * TAU * this.aph)) * cfg.actuator * Math.pow(load, 1.4) * clamp(rpm / 1500, 0, 1);
       }
       if (this.starter) {
         this.sph += cfg.starterHz / sr; if (this.sph > 1) this.sph -= 1;

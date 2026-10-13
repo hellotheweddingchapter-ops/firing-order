@@ -26,8 +26,25 @@ Then open http://localhost:5178 and press **Start engine** (or Space).
 `renders/` has 13-second offline renders of each engine, from the cabin and from outside
 (idle, blip, full pull, overrun with crackles).
 
+## How it reads the Tesla
+
+The browser can't see the pedal, so everything comes from GPS speed:
+
+- A Kalman filter estimates speed and acceleration at whatever rate the car delivers fixes.
+- Throttle is worked out from acceleration plus road load. It is held steady at cruise and reacts in a few tenths of a second when you put your foot down.
+- Lifting off (regen) becomes a closed-throttle overrun, judged on a slower reading so GPS noise can't flick it on and off. Below 7 km/h the clutch is open and the engine idles.
+- Chill mode is scaled, so flooring it in Chill still sounds like full throttle.
+- GPS dropouts (tunnels) hold speed until the signal returns.
+
+**Drive modes:** Comfort upshifts early and cruises at 1,300-2,200 rpm with the exhaust valves shut. Sport holds gears, keeps the valves open and lets it pop.
+
+**Test drive:** a scripted 90-second drive (town, lights, motorway on cruise control, overtake, slip road, roundabout) run through the same GPS path as the car.
+
+**Car check (settings):** run it once in the car. It reports the GPS rate, whether fixes carry speed, motion sensors, what the steering-wheel scroll button sends, and audio output.
+
 ## Files
 
 - `engine-worklet.js`: the synthesis (AudioWorklet; also runs in Node for offline renders)
 - `engines.js`: per-engine firing order, exhaust layout, gear ratios, tuning values
-- `app.js`: EV physics, GPS filtering, throttle inference, gearbox, UI
+- `drive-model.js`: Tesla model, GPS Kalman filter, load inference, test drive
+- `app.js`: gearbox, ignition, UI, car check

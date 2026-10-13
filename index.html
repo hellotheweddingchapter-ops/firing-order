@@ -116,7 +116,7 @@ button { cursor: pointer; }
 .tag { font: 700 12px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 10px; border-radius: 8px; background: var(--surface-2); color: var(--dim); }
 .tag.on { color: var(--fg); }
 
-.controls { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 12px; min-height: 0; }
+.controls { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 12px; min-height: 0; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
 .seg button { border: 0; background: transparent; border-radius: 9px; min-height: 48px; font-weight: 700; font-size: 15px; color: var(--dim); letter-spacing: 0.04em; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 0 var(--line), inset 0 -3px 0 var(--accent); }
@@ -154,7 +154,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 32px; }
 .bar::after { content: ""; display: block; height: 100%; width: calc(var(--k) * 100%); background: var(--fg); border-radius: 3px; }
 .bar.red::after { background: var(--accent); }
 .bar.blue::after { background: var(--blue); }
-.pedals { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+.pedals { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 10px; }
+.drive-btn { color: var(--fg); }
+.drive-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.drive-tag { background: var(--accent); color: #fff; }
 .pedal {
   position: relative; overflow: hidden; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface);
   display: grid; place-items: center; font: 700 13px/1 var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim);
@@ -245,7 +248,7 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
 
     <section class="hero panel" id="dash" aria-label="Rev counter">
       <canvas id="tach" aria-hidden="true"></canvas>
-      <div class="mode-tag"><span class="tag" id="transTag">Auto</span><span class="tag" id="valveTag">Valves shut</span></div>
+      <div class="mode-tag"><span class="tag" id="transTag">Auto</span><span class="tag" id="valveTag">Valves shut</span><span class="tag on drive-tag" id="driveTag" hidden></span></div>
       <div class="hero-center">
         <div class="gear" id="gear">–</div>
         <div class="rpm"><span id="rpmNum">0</span><small>RPM</small></div>
@@ -259,6 +262,10 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
       <div class="seg" role="group" aria-label="Transmission">
         <button type="button" data-trans="auto" aria-pressed="true">AUTO</button>
         <button type="button" data-trans="manual" aria-pressed="false">MANUAL</button>
+      </div>
+      <div class="seg" role="group" aria-label="Drive mode">
+        <button type="button" data-mode="comfort" aria-pressed="true">COMFORT</button>
+        <button type="button" data-mode="sport" aria-pressed="false">SPORT</button>
       </div>
       <div class="panel box">
         <span class="cap">Gearbox · <span id="gearCount"></span></span>
@@ -285,6 +292,7 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
     <div class="panel metric"><span class="cap">G-force</span><b id="accVal">0.00<small>g</small></b><div class="bar" id="accBar"></div></div>
     <div class="panel metric"><span class="cap">Exhaust temp</span><b id="egtVal">20<small>°C</small></b><div class="bar red" id="egtBar"></div></div>
     <div class="pedals" id="pedals">
+      <button id="driveBtn" class="pedal drive-btn" type="button"><span>Test drive</span></button>
       <div id="brake" class="pedal" role="button" aria-label="Brake (hold)"><span>Brake</span></div>
       <div id="pedal" class="pedal" role="button" aria-label="Accelerator (hold and slide right for more)"><div id="pedalFill"></div><span>Accelerator</span></div>
     </div>
@@ -321,6 +329,21 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
       <option value="lr" selected>Model 3 / Y · Long Range</option>
       <option value="perf">Model 3 / Y · Performance</option>
     </select>
+    <label class="check" for="chill">
+      <input id="chill" type="checkbox">
+      <span>Chill acceleration<small>Tick this if the car is set to Chill. Flooring it then still sounds like full throttle.</small></span>
+    </label>
+    <label class="check" for="speedComp">
+      <input id="speedComp" type="checkbox" checked>
+      <span>Louder at motorway speed<small>Raises the engine up to 4 dB as wind and tyre noise build, so it isn't buried at 120.</small></span>
+    </label>
+  </section>
+
+  <section>
+    <span class="cap">Car check</span>
+    <p>Run this once in the Tesla, parked, then drive a short way. It shows what the car's browser gives the app. Take a photo of the results and send it to me.</p>
+    <div class="row"><button class="btn" id="checkBtn" type="button">Run car check</button><span class="name" id="checkState">Not run</span></div>
+    <dl class="kv" id="checkOut"></dl>
   </section>
 
   <section>
@@ -369,7 +392,8 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
 
 <div id="toast" role="status" hidden></div>
 
-<script src="engines.js"></script>
-<script src="app.js"></script>
+<script src="engines.js?v=4"></script>
+<script src="drive-model.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
