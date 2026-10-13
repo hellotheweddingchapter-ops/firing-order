@@ -1,5 +1,5 @@
 // Offline support for the car: serve from the network when there is one, from cache when not.
-const CACHE = 'firing-order-v5';
+const CACHE = 'firing-order-v6';
 const CORE = ['./', 'index.html', 'app.js', 'engines.js', 'engine-worklet.js', 'drive-model.js'];
 
 self.addEventListener('install', (e) => {

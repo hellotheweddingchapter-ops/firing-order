@@ -31,7 +31,7 @@ let ctx = null, node = null, gain = null, analyser = null;
 async function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return; }
   ctx = new AudioContext({ latencyHint: 'interactive' });
-  await ctx.audioWorklet.addModule('engine-worklet.js?v=6');
+  await ctx.audioWorklet.addModule('engine-worklet.js?v=7');
   node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2] });
   gain = ctx.createGain(); gain.gain.value = +$('#volume').value;
   analyser = ctx.createAnalyser(); analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.6;
@@ -105,7 +105,7 @@ function tick() {
 
   // Pedal ramps like a foot, not a switch.
   S.pedalT = Math.max(S.keyPedal, S.ptrPedal);
-  S.pedal += clamp(S.pedalT - S.pedal, -6 * dt, 4 * dt);
+  S.pedal += clamp(S.pedalT - S.pedal, -8 * dt, 14 * dt);
 
   // 1. Vehicle speed: the scripted test drive, simulated EV physics, or GPS.
   let v, a, load, overrun;
@@ -140,9 +140,9 @@ function tick() {
   // 2. Engine load: read straight off the pedal, or inferred from acceleration.
   if (S.source === 'sim' && !S.gpsStyle && !S.drive) {
     load = S.pedal; overrun = S.pedal < 0.03 && v > 2;
-    S.load += (load - S.load) * Math.min(1, dt / 0.08);
+    S.load += (load - S.load) * Math.min(1, dt / (load > S.load ? 0.02 : 0.06));
   } else {
-    const r = S.li.update(v, a, dt, aMax(v), TESLA.drag(v));
+    const r = S.li.update(v, a, dt, aMax(v), TESLA.drag(v), S.est.fast);
     S.load = r.load; overrun = r.overrun;
   }
   S.overrun = overrun;
@@ -701,5 +701,5 @@ requestAnimationFrame(frame);
 
 // Offline: once loaded over HTTPS, the app keeps working in the car without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js?v=6').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=7').catch(() => {});
 }

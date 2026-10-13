@@ -26,9 +26,12 @@ const clampN = (x, a, b) => (x < a ? a : x > b ? b : x);
 // the process noise scales with the time between updates.
 class SpeedFilter {
   constructor(q = 6, adaptive = true) { this.q = q; this.adaptive = adaptive; this.reset(); }
-  reset() { this.v = 0; this.a = 0; this.aS = 0; this.P = [4, 0, 4]; this.init = false; this.sinceFix = 1e9; this.nv = null; }
+  reset() {
+    this.v = 0; this.a = 0; this.aS = 0; this.P = [4, 0, 4]; this.init = false; this.sinceFix = 1e9; this.nv = null;
+    this.clock = 0; this.recent = []; this.fast = null;
+  }
   predict(dt) {
-    this.sinceFix += dt;
+    this.sinceFix += dt; this.clock += dt;
     // No fixes for a while (tunnel, car park): hold speed and let acceleration relax to zero.
     if (this.sinceFix > 1.5) this.a *= Math.exp(-dt / 0.6);
     this.v = Math.max(0, this.v + this.a * dt);
@@ -38,7 +41,7 @@ class SpeedFilter {
       p01 + dt * p11 + q * dt * dt / 2,
       p11 + q * dt,
     ];
-    this.aS += (this.a - this.aS) * Math.min(1, dt / 0.12);
+    this.aS += (this.a - this.aS) * Math.min(1, dt / 0.05);
   }
   // z: measured speed (m/s). r: its variance as a starting guess. The filter then learns how
   // noisy the car's speed really is from its own prediction errors, and trusts it accordingly.
@@ -52,10 +55,23 @@ class SpeedFilter {
       r = clampN(this.nv, 0.0004, 1);
     }
     this.r = r;
-    const s = p00 + r, k0 = p00 / s, k1 = p01 / s;
+    // Fast reading: acceleration across the last two fixes (0.2 s at 10 Hz). Noisy, but it sees
+    // a pedal press one fix after it shows in the speed. Its noise level comes from the learned r.
+    this.recent.push([this.clock, z]);
+    if (this.recent.length > 3) this.recent.shift();
+    if (this.recent.length === 3) {
+      const [t0, z0] = this.recent[0], span = Math.max(0.05, this.clock - t0);
+      this.fast = { a: (z - z0) / span, sigma: Math.sqrt(2 * r) / span + 0.05 };
+    }
+    // Manoeuvre detection: a prediction error far outside the noise means the driver changed the
+    // pedal. Open up the acceleration estimate so the filter catches up in a fix or two.
+    const s0 = p00 + r;
+    if ((y * y) / s0 > 9) this.P = [p00, p01, p11 + 25];
+    const [q00, q01, q11] = this.P;
+    const s = q00 + r, k0 = q00 / s, k1 = q01 / s;
     this.v = Math.max(0, this.v + k0 * y);
     this.a = clampN(this.a + k1 * y, -12, 12);
-    this.P = [(1 - k0) * p00, (1 - k0) * p01, p11 - k1 * p01];
+    this.P = [(1 - k0) * q00, (1 - k0) * q01, q11 - k1 * q01];
   }
   get lost() { return this.sinceFix > 1.5; }
 }
@@ -64,14 +80,18 @@ class SpeedFilter {
 class LoadInference {
   constructor() { this.reset(); }
   reset() { this.load = 0; this.overrun = false; this.dwell = 0; this.aSlow = 0; }
-  update(v, a, dt, aMax, drag) {
+  update(v, a, dt, aMax, drag, fast) {
+    // When the fast reading jumps clearly above the smooth one, the pedal has gone down: use it now.
+    if (fast && fast.a - a > 3 * fast.sigma) a = Math.max(a, fast.a - fast.sigma);
     const net = a + drag; // what the engine must supply, beyond holding speed
     // Lift-off is judged on a slower reading, so GPS noise in town can't flick the engine in and out of overrun.
     this.aSlow += (a - this.aSlow) * Math.min(1, dt / 0.3);
     const netSlow = this.aSlow + drag;
     let target;
     this.dwell += dt;
-    if (v < 2 && this.aSlow > -0.6 && a < 0.5) {
+    // Back on the pedal ends a lift-off at once. Only entering lift-off is judged slowly.
+    if (this.overrun && net > 0.15) { this.overrun = false; this.dwell = 0; }
+    if (v < 2 && this.aSlow > -0.6 && a < 0.35) {
       // Standing or creeping: below walking pace the clutch is open, so the engine just idles.
       target = 0.06;
       if (this.overrun) { this.overrun = false; this.dwell = 0; }
@@ -81,9 +101,10 @@ class LoadInference {
       if (want !== this.overrun && this.dwell > 0.4) { this.overrun = want; this.dwell = 0; }
       target = this.overrun ? 0 : clampN(0.08 + 0.92 * Math.pow(Math.max(net, 0) / aMax, 0.85), 0.05, 1);
     }
-    // Steady at cruise, quick when the pedal really moves: GPS noise mustn't wobble the sound.
+    // Steady at cruise, near-instant when the pedal really moves: GPS noise mustn't wobble the
+    // sound, but a press has to be heard at once. Rising is faster than falling, like a throttle.
     const dl = Math.abs(target - this.load);
-    const tau = 0.6 + (0.06 - 0.6) * clampN(dl / 0.15, 0, 1);
+    const tau = target > this.load ? 0.6 + (0.02 - 0.6) * clampN(dl / 0.1, 0, 1) : 0.6 + (0.1 - 0.6) * clampN(dl / 0.15, 0, 1);
     this.load += (target - this.load) * Math.min(1, dt / tau);
     return { load: this.load, overrun: this.overrun };
   }

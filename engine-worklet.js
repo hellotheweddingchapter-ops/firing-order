@@ -57,6 +57,12 @@ class Biquad {
   }
 }
 
+// First-order all-pass: shifts phase only. Different settings left and right widen a mono source.
+class AllPass {
+  constructor(g) { this.g = g; this.x1 = 0; this.y1 = 0; }
+  run(x) { const y = -this.g * x + this.x1 + this.g * this.y1; this.x1 = x; this.y1 = y; return y; }
+}
+
 // One exhaust pressure pulse over normalised time u in [0, 1].
 function buildPulse(lambda, p, K) {
   const t = new Float32Array(TBL + 2);
@@ -92,6 +98,7 @@ class EngineDSP {
     this.phase = 0; this.ctl = 0; this.hunt = 0; this.huntV = 0;
     this.kR = 1 - Math.exp(-1 / (0.012 * sr));
     this.kL = 1 - Math.exp(-1 / (0.03 * sr));
+    this.kLup = 1 - Math.exp(-1 / (0.006 * sr));
   }
 
   configure(cfg) {
@@ -128,12 +135,12 @@ class EngineDSP {
     this.hissHp = new Biquad().set('hp', 3800, 0.7, sr);
     this.bovBp = new Biquad().set('bp', 2000, 1.2, sr);
     this.flutterBp = new Biquad().set('bp', 750, 1.3, sr);
-    // Cabin: the car body passes the low end and boom, damps the top.
-    this.cabLpL = new Biquad().set('lp', 4200, 0.6, sr);
-    this.cabLpR = new Biquad().set('lp', 4200, 0.6, sr);
-    this.boom = new Biquad().set('bp', 48, 1.1, sr);
-    this.er = new FDelay(ms(12));
-    this.erTaps = [[ms(3.1), 0.22], [ms(5.7), -0.16], [ms(8.3), 0.11]];
+    // Cabin: transmission through the body. Mass law above a few hundred hertz, plus leakage.
+    this.kTL = 1 - Math.exp(-TAU * 380 / sr);
+    this.tlM = 0; this.tlS = 0;
+    this.leakM = new Biquad().set('lp', 3000, 0.7, sr);
+    this.apL = [new AllPass(0.45), new AllPass(-0.2)];
+    this.apR = [new AllPass(-0.35), new AllPass(0.55)];
     this.dc = { lx: 0, ly: 0, rx: 0, ry: 0 };
     // Four-line feedback delay network for a short, decorrelated stereo tail.
     this.fdn = [7.3, 9.1, 11.7, 13.9].map((m) => ({ d: new FDelay(ms(m * 3.4) + 4), base: ms(m), lp: 0 }));
@@ -265,7 +272,7 @@ class EngineDSP {
     for (let s = 0; s < n; s++) {
       if ((this.ctl++ & 31) === 0) this.control();
       this.rpm += (this.rpmT * (1 + this.hunt) - this.rpm) * this.kR;
-      this.load += (this.loadT - this.load) * this.kL;
+      this.load += (this.loadT - this.load) * (this.loadT > this.load ? this.kLup : this.kL); // throttle opens fast, closes softer
       const rpm = this.rpm, ts = this.tScale, load = this.load;
 
       // Advance the crank through the 720° four-stroke cycle.
@@ -371,7 +378,7 @@ class EngineDSP {
       this.click *= this.dClick;
       const mech = this.clickHp.run(rnd()) * this.click + this.mechHp.run(rnd()) * this.env * rn * rn * cfg.mech.noise;
 
-      let extra = 0;
+      let extra = 0, act = 0;
       if (cfg.turbo) {
         const tb = cfg.turbo;
         const wob = 1 + 0.004 * Math.sin(TAU * this.wob) + 0.002 * Math.sin(TAU * this.wob * 2.7);
@@ -405,7 +412,7 @@ class EngineDSP {
       if (cfg.actuator && this.cabin && !this.fuelCut) {
         // Audi-style cabin sound actuator: reinforces the firing order through the body.
         this.aph += rpm / 60 * cyl.length / 2 / sr; if (this.aph > 1) this.aph -= 1;
-        extra += (Math.sin(TAU * this.aph) + 0.4 * Math.sin(2 * TAU * this.aph)) * cfg.actuator * Math.pow(load, 1.4) * clamp(rpm / 1500, 0, 1);
+        act = (Math.sin(TAU * this.aph) + 0.4 * Math.sin(2 * TAU * this.aph)) * cfg.actuator * Math.pow(load, 1.4) * clamp(rpm / 1500, 0, 1);
       }
       if (this.starter) {
         this.sph += cfg.starterHz / sr; if (this.sph > 1) this.sph -= 1;
@@ -416,22 +423,27 @@ class EngineDSP {
       const ex = cfg.exhaustGain;
       let l, r;
       if (this.cabin) {
-        // Inside the car: the body carries the block and the boom, glass and trim take off the top.
-        const mono = blk * 1.4 + induction * 0.8 + mech * 0.6 + extra;
-        let cl = this.cabLpL.run(mono + exL * ex), cr = this.cabLpR.run(mono + exR * ex);
-        const mid = (cl + cr) * 0.5;
-        const boom = this.boom.run(mid) * 0.7;
-        let refl = 0;
-        for (const [d, g] of this.erTaps) refl += this.er.read(d) * g;
-        this.er.write(mid);
-        l = cl + boom + refl; r = cr + boom + refl;
+        // What a driver hears in a petrol car: the engine after it has come through the body.
+        // The Tesla's own cabin supplies the room and the boom, so none is added here.
+        const cb = cfg.cabin;
+        const exM = (exL + exR) * 0.5 * ex, exS = (exL - exR) * 0.5 * ex;
+        const airborne = exM * cb.exhaust + induction * cb.intake + mech * cb.mech + extra;
+        this.tlM += (airborne - this.tlM) * this.kTL;          // −6 dB per octave above ~380 Hz
+        this.tlS += (exS * cb.exhaust - this.tlS) * this.kTL;
+        const through = this.tlM + this.leakM.run(airborne) * (cb.leak ?? 0.16); // glass and seals leak a little edge
+        // Structure-borne: the block shakes the floor and seats. The actuator plays from speakers.
+        const core = (through + blk * cb.block) * cfg.cabinGain + act;
+        let cl = core + this.tlS * cfg.cabinGain, cr = core - this.tlS * cfg.cabinGain;
+        for (const ap of this.apL) cl = ap.run(cl);
+        for (const ap of this.apR) cr = ap.run(cr);
+        l = cl; r = cr;
       } else {
-        const mono = blk + induction + mech + extra;
+        const mono = blk + induction + mech + extra + act;
         l = mono + exL * ex; r = mono + exR * ex;
       }
-      // Space: a cabin-sized tail inside, a wider and quieter one outside.
-      {
-        const scale = this.cabin ? 1 : 3.2, fb = this.cabin ? 0.55 : 0.62, mix = this.cabin ? 0.16 : 0.1;
+      // Outside only: a light, wide tail for the space around the car. Inside, the Tesla's cabin is the room.
+      if (!this.cabin) {
+        const scale = 3.2, fb = 0.6, mix = 0.08;
         const f = this.fdn, o = this.fdnOut;
         for (let i = 0; i < 4; i++) { f[i].lp += (f[i].d.read(f[i].base * scale) - f[i].lp) * 0.45; o[i] = f[i].lp; }
         const inp = (l + r) * 0.5;
