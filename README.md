@@ -7,6 +7,19 @@ Engines: Porsche 911 GT3 (flat-six), Nissan GT-R (twin-turbo V6), Audi S3 (turbo
 Ferrari 458 Italia (flat-plane V8). The names describe the simulated sound; there is no
 affiliation with the manufacturers.
 
+## The simulated engine
+
+`engine-physics.js` simulates the engine rather than shaping a sound:
+
+- **Cylinders:** gas mass and temperature in every cylinder, crank-angle by crank-angle. Piston motion from bore, stroke and rod; valve flow from cam timing, lift and valve sizes; combustion as a Wiebe burn after the spark.
+- **Intake:** a plenum fed through the throttle. A controller holds the manifold pressure the pedal asks for, so cruise really runs in vacuum, and boost comes from the turbo model.
+- **Exhaust:** every header, collector, turbine, silencer and tailpipe is a pipe of travelling pressure waves (digital waveguides) joined at junctions. The flow out of each exhaust valve is solved together with the pressure it raises in its pipe.
+- **Sound:** what radiates from the tailpipes and the intake mouth, plus the block shaking under cylinder pressure, then the cabin model.
+
+Checked against real engines: about 0.3-0.45 bar manifold pressure at light cruise and 0.97 bar at full throttle (1.6-1.9 bar on boost); peak cylinder pressure 90-125 bar at full load and 4-6 bar on the overrun; cylinder filling of about 90% at full throttle. Every car is built angry: big-overlap cams, short headers, straight-through silencers, valves always open.
+
+It runs at about 6-11x real time. A quick speed check when you start the engine falls back to the Classic sound if the screen's computer is too slow. Settings → Engine sound switches between the two.
+
 ## Run it
 
 ```
@@ -44,7 +57,8 @@ The browser can't see the pedal, so everything comes from GPS speed:
 
 ## Files
 
-- `engine-worklet.js`: the synthesis (AudioWorklet; also runs in Node for offline renders)
+- `engine-physics.js`: the simulated engine (cylinders, valves, combustion, exhaust waves)
+- `engine-worklet.js`: the audio worklet: runs the simulated engine (or the classic synthesis), turbo, gearbox, pops and the cabin model
 - `engines.js`: per-engine firing order, exhaust layout, gear ratios, tuning values
 - `drive-model.js`: Tesla model, GPS Kalman filter, load inference, test drive
 - `app.js`: gearbox, ignition, UI, car check

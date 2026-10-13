@@ -8,7 +8,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 
 const S = {
   engineId: 'gt3', source: 'sim', trans: 'auto', variant: 'lr', chill: false, mode: 'comfort',
-  gpsStyle: false, listen: 'cabin', speedComp: true,
+  gpsStyle: false, listen: 'cabin', speedComp: true, model: 'physics',
   ign: 'off', ignT: 0, runStart: 0,
   v: 0, aTrue: 0, pedal: 0, pedalT: 0, brake: 0,
   keyPedal: 0, ptrPedal: 0,
@@ -31,7 +31,8 @@ let ctx = null, node = null, gain = null, analyser = null;
 async function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return; }
   ctx = new AudioContext({ latencyHint: 'interactive' });
-  await ctx.audioWorklet.addModule('engine-worklet.js?v=8');
+  await ctx.audioWorklet.addModule('engine-physics.js?v=9');
+  await ctx.audioWorklet.addModule('engine-worklet.js?v=9');
   node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2] });
   gain = ctx.createGain(); gain.gain.value = +$('#volume').value;
   analyser = ctx.createAnalyser(); analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.6;
@@ -41,8 +42,25 @@ async function ensureAudio() {
 const sendConfig = () => node && node.port.postMessage({ type: 'config', cfg: ENG().sound });
 
 // ---------- ignition ----------
+// Can this computer run the simulated engine in real time? Times a short burst of the physics
+// for the chosen car; below 3x real time there isn't enough headroom, so use the classic sound.
+function physicsFast() {
+  try {
+    const e = ENG(), core = new PhysCore({ ...e.sound.physics, idleRpm: e.idle }, e.sound.firing, 48000);
+    core.setGas(1000);
+    const N = 9600, rpm = e.redline * 0.8, dph = rpm / 120 / 48000, t0 = performance.now();
+    let ph = 0;
+    for (let i = 0; i < N; i++) { core.step(ph, dph, rpm, 1, false, 0, 1, 0, Math.random); ph = (ph + dph) % 1; }
+    return (N / 48000) / ((performance.now() - t0) / 1000) >= 3;
+  } catch (_) { return false; }
+}
+
 async function toggleIgnition() {
   if (S.ign === 'off' || S.ign === 'stopping') {
+    if (S.model === 'physics' && S.physicsOk === undefined) {
+      S.physicsOk = physicsFast();
+      if (!S.physicsOk) { S.model = 'classic'; renderControls(); toast('This screen is too slow for the simulated engine: using Classic'); }
+    }
     try { await ensureAudio(); } catch (err) { toast('Audio could not start: ' + err.message); return; }
     S.ign = 'cranking'; S.ignT = S.t;
     try { await navigator.wakeLock?.request('screen'); } catch (_) {}
@@ -198,7 +216,7 @@ function tick() {
     gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.3);
   }
 
-  if (node) node.port.postMessage({ type: 'params', rpm: S.rpm, load: sendLoad, fuelCut, starter, crackleBoost: S.crackleBoost, speed: v, listen: S.listen, sport: sport() });
+  if (node) node.port.postMessage({ type: 'params', rpm: S.rpm, load: sendLoad, fuelCut, starter, crackleBoost: S.crackleBoost, speed: v, listen: S.listen, sport: sport(), model: S.model });
 }
 setInterval(tick, 1000 / 60);
 
@@ -310,6 +328,7 @@ if (prefs.variant) S.variant = prefs.variant;
 if (prefs.listen) S.listen = prefs.listen;
 S.unit = prefs.unit || 'kmh';
 if (prefs.mode) S.mode = prefs.mode;
+if (prefs.model) S.model = prefs.model;
 if (prefs.chill != null) S.chill = prefs.chill;
 if (prefs.speedComp != null) S.speedComp = prefs.speedComp;
 S.theme = prefs.theme || 'auto';
@@ -334,6 +353,7 @@ function renderControls() {
   setPressed('[data-theme-set]', 'themeSet', S.theme);
   setPressed('[data-unit]', 'unit', S.unit);
   setPressed('[data-mode]', 'mode', S.mode);
+  setPressed('[data-model]', 'model', S.model);
   $('#chill').checked = S.chill;
   $('#speedComp').checked = S.speedComp;
   $('#driveBtn').classList.toggle('on', !!S.drive);
@@ -373,6 +393,7 @@ document.querySelectorAll('[data-trans]').forEach((b) => b.addEventListener('cli
 document.querySelectorAll('[data-listen]').forEach((b) => b.addEventListener('click', () => { S.listen = prefs.listen = b.dataset.listen; savePrefs(); renderControls(); }));
 document.querySelectorAll('[data-theme-set]').forEach((b) => b.addEventListener('click', () => { S.theme = prefs.theme = b.dataset.themeSet; savePrefs(); applyTheme(); renderControls(); }));
 document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => { S.unit = prefs.unit = b.dataset.unit; savePrefs(); renderControls(); }));
+document.querySelectorAll('[data-model]').forEach((b) => b.addEventListener('click', () => { S.model = prefs.model = b.dataset.model; savePrefs(); renderControls(); }));
 document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { S.mode = prefs.mode = b.dataset.mode; savePrefs(); renderControls(); }));
 $('#chill').addEventListener('change', (ev) => { S.chill = prefs.chill = ev.target.checked; savePrefs(); });
 $('#speedComp').addEventListener('change', (ev) => { S.speedComp = prefs.speedComp = ev.target.checked; savePrefs(); });
@@ -701,5 +722,5 @@ requestAnimationFrame(frame);
 
 // Offline: once loaded over HTTPS, the app keeps working in the car without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js?v=8').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=9').catch(() => {});
 }

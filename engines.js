@@ -15,6 +15,8 @@ const ENGINES = {
     shiftMs: 90, revTau: [0.045, 0.075], flare: 1100,
     upshiftCrack: 0.15, downshiftCrack: 0.1,
     sound: {
+      // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
+      physics: {"redline":9000,"bore":0.102,"stroke":0.0815,"cr":13.3,"valves":4,"inValve":0.042,"exValve":0.035,"cam":{"ivo":40,"ivc":75,"evo":70,"evc":40,"lift":0.0125},"plenum":0.006,"throttle":0.0108,"idleArea":0.000016,"idleMap":0.5,"exhaust":{"runner":0.4,"runnerD":0.04,"collector":0.25,"collectorD":0.06,"merge":true,"mid":0.6,"midD":0.07,"box":0.35,"boxD":0.14,"tail":0.25,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 900, redline: 9000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 0.86, gain: 1.00 }, // 1
@@ -30,13 +32,13 @@ const ENGINES = {
       tail: { ms: 6.5, fb: -0.45, mix: 0.35 },
       muffler: [{ f: 160, q: 1.2, g: 0.8 }, { f: 520, q: 1.8, g: 0.6 }, { f: 1400, q: 1.4, g: 0.4 }],
       mufflerDirect: 0.5,
-      valve: { rpm: 4500, load: 0.75, closedHz: 1200, closedGain: 0.6 },
+      valve: null, // straight-through: nothing closes
       tone: { base: 1200, load: 4000, rpm: 0.45 },
       dyn: 1.75, rasp: 0.25,
       intake: { gain: 0.9, hz: 520, q: 1.6, runnerMs: 1.6, flapRpm: 5600, flapHz: 780, roar: 0.35 },
       mech: { click: 0.12, noise: 0.06 },
       turbo: null,
-      timingJitterDeg: 0.6, overrunAir: 0.18, cabin: { exhaust: 0.9, intake: 1.5, mech: 1.2, block: 1.1 , leak: 0.16 }, cabinGain: 1.4, crackle: 0.04, jitter: 0.025, turb: 0.15, noise: 0.15,
+      timingJitterDeg: 0.6, overrunAir: 0.18, cabin: { exhaust: 0.9, intake: 1.5, mech: 1.2, block: 1.1 , leak: 0.35 }, cabinGain: 1.4, crackle: 0.15, jitter: 0.025, turb: 0.15, noise: 0.15,
       blockHz: 160, blockGain: 0.7, exhaustGain: 1.55, drive: 1.2, starterHz: 420,
     },
   },
@@ -51,6 +53,8 @@ const ENGINES = {
     shiftMs: 160, revTau: [0.09, 0.14], flare: 700,
     upshiftCrack: 0.05, downshiftCrack: 0.03,
     sound: {
+      // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
+      physics: {"redline":7000,"bore":0.0955,"stroke":0.0884,"cr":9,"valves":4,"inValve":0.037,"exValve":0.032,"cam":{"ivo":15,"ivc":55,"evo":55,"evc":15,"lift":0.0105},"plenum":0.007,"throttle":0.0057,"idleArea":0.000012,"idleMap":0.45,"exhaust":{"runner":0.25,"runnerD":0.038,"collector":0.12,"collectorD":0.055,"turbine":0.045,"downpipe":0.7,"merge":true,"mid":1.2,"midD":0.08,"box":0.5,"boxD":0.16,"tail":0.3,"tailD":0.08,"tips":2},"gain":{"exhaust":0.2,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 800, redline: 7000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 1.30, gain: 1.00 },
@@ -66,14 +70,14 @@ const ENGINES = {
       tail: { ms: 11, fb: -0.5, mix: 0.45 },
       muffler: [{ f: 90, q: 1.2, g: 1.0 }, { f: 300, q: 1.6, g: 0.6 }, { f: 800, q: 1.4, g: 0.3 }],
       mufflerDirect: 0.3,
-      valve: { rpm: 3500, load: 0.6, closedHz: 700, closedGain: 0.55 },
+      valve: null, // straight-through: nothing closes
       tone: { base: 600, load: 2200, rpm: 0.25 },
       rasp: 0.45,
       intake: { gain: 0.15, hz: 400, q: 1.2, runnerMs: 2.2, flapRpm: 1e9, flapHz: 400, roar: 0.1 },
       mech: { click: 0.05, noise: 0.05 },
-      turbo: { count: 2, spoolRpm: 2400, lag: 0.55, whineBase: 2600, whineSpan: 7000, whineGain: 0.03, hissGain: 0.07, bov: 'whoosh', bovGain: 0.35 },
+      turbo: { maxBar: 1, count: 2, spoolRpm: 2400, lag: 0.55, whineBase: 2600, whineSpan: 7000, whineGain: 0.03, hissGain: 0.07, bov: 'whoosh', bovGain: 0.35 },
       gearWhine: { teeth: 29, gain: 0.012, perMs: 38, diffGain: 0.008 },
-      timingJitterDeg: 0.8, overrunAir: 0.22, cabin: { exhaust: 1.0, intake: 0.6, mech: 0.5, block: 1.3 , leak: 0.22 }, cabinGain: 1.15, crackle: 0.05, jitter: 0.03, turb: 0.25, noise: 0.3,
+      timingJitterDeg: 0.8, overrunAir: 0.22, cabin: { exhaust: 1.0, intake: 0.6, mech: 0.5, block: 1.3 , leak: 0.35 }, cabinGain: 1.15, crackle: 0.12, jitter: 0.03, turb: 0.25, noise: 0.3,
       blockHz: 150, blockGain: 0.9, exhaustGain: 1.0, drive: 1.2, starterHz: 380,
     },
   },
@@ -88,6 +92,8 @@ const ENGINES = {
     shiftMs: 100, revTau: [0.07, 0.11], flare: 900,
     upshiftCrack: 0.75, downshiftCrack: 0.15,
     sound: {
+      // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
+      physics: {"redline":6500,"bore":0.0825,"stroke":0.0928,"cr":9.3,"valves":4,"inValve":0.034,"exValve":0.028,"cam":{"ivo":12,"ivc":45,"evo":50,"evc":12,"lift":0.0105},"plenum":0.004,"throttle":0.0028,"idleArea":0.000008,"idleMap":0.42,"exhaust":{"runner":0.15,"runnerD":0.036,"collector":0.1,"collectorD":0.05,"turbine":0.042,"downpipe":0.6,"mid":2,"midD":0.07,"box":0.5,"boxD":0.14,"tail":0.3,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 750, redline: 6500,
       firing: [
         { deg: 0,   runnerMs: 1.20, gain: 1.00 }, // 1
@@ -101,14 +107,14 @@ const ENGINES = {
       tail: { ms: 10, fb: -0.5, mix: 0.4 },
       muffler: [{ f: 85, q: 1.3, g: 1.1 }, { f: 260, q: 2.0, g: 0.6 }, { f: 700, q: 1.5, g: 0.3 }],
       mufflerDirect: 0.35,
-      valve: { rpm: 3000, load: 0.55, closedHz: 800, closedGain: 0.6 },
+      valve: null, // straight-through: nothing closes
       tone: { base: 700, load: 2600, rpm: 0.3 },
       rasp: 0.35,
       intake: { gain: 0.12, hz: 450, q: 1.2, runnerMs: 2.0, flapRpm: 1e9, flapHz: 450, roar: 0.08 },
       mech: { click: 0.05, noise: 0.04 },
-      turbo: { count: 1, spoolRpm: 1800, lag: 0.45, whineBase: 3000, whineSpan: 6000, whineGain: 0.015, hissGain: 0.06, bov: 'whoosh', bovGain: 0.3 },
+      turbo: { maxBar: 1.3, count: 1, spoolRpm: 1800, lag: 0.45, whineBase: 3000, whineSpan: 6000, whineGain: 0.015, hissGain: 0.06, bov: 'whoosh', bovGain: 0.3 },
       actuator: 0.05,
-      timingJitterDeg: 0.8, overrunAir: 0.25, cabin: { exhaust: 1.0, intake: 0.5, mech: 0.4, block: 1.4 , leak: 0.32 }, cabinGain: 1.12, crackle: 0.09, jitter: 0.03, turb: 0.2, noise: 0.3,
+      timingJitterDeg: 0.8, overrunAir: 0.25, cabin: { exhaust: 1.0, intake: 0.5, mech: 0.4, block: 1.4 , leak: 0.35 }, cabinGain: 1.12, crackle: 0.2, jitter: 0.03, turb: 0.2, noise: 0.3,
       blockHz: 170, blockGain: 1.0, exhaustGain: 0.95, drive: 1.25, starterHz: 400,
     },
   },
@@ -123,6 +129,8 @@ const ENGINES = {
     shiftMs: 60, revTau: [0.04, 0.07], flare: 1500,
     upshiftCrack: 0.25, downshiftCrack: 0.35,
     sound: {
+      // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
+      physics: {"redline":9000,"bore":0.094,"stroke":0.081,"cr":12.5,"valves":4,"inValve":0.037,"exValve":0.031,"cam":{"ivo":24,"ivc":62,"evo":58,"evc":24,"lift":0.012},"plenum":0.007,"throttle":0.012,"idleArea":0.000018,"idleMap":0.5,"exhaust":{"runner":0.33,"runnerD":0.04,"pairs":true,"secondary":0.3,"secondaryD":0.048,"collector":0.2,"collectorD":0.058,"merge":false,"mid":0.5,"midD":0.065,"box":0.35,"boxD":0.13,"tail":0.2,"tailD":0.07,"tips":1},"gain":{"exhaust":0.18,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 1000, redline: 9000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 0.90, gain: 1.00 }, // 1
@@ -140,13 +148,13 @@ const ENGINES = {
       tail: { ms: 6, fb: -0.4, mix: 0.3 },
       muffler: [{ f: 200, q: 1.2, g: 0.7 }, { f: 650, q: 1.6, g: 0.6 }, { f: 1800, q: 1.3, g: 0.45 }],
       mufflerDirect: 0.55,
-      valve: { rpm: 4000, load: 0.5, closedHz: 1100, closedGain: 0.5 },
+      valve: null, // straight-through: nothing closes
       tone: { base: 1400, load: 4500, rpm: 0.5 },
       rasp: 0.2,
       intake: { gain: 0.6, hz: 700, q: 1.4, runnerMs: 1.3, flapRpm: 6500, flapHz: 950, roar: 0.3 },
       mech: { click: 0.08, noise: 0.05 },
       turbo: null,
-      timingJitterDeg: 0.5, overrunAir: 0.16, cabin: { exhaust: 0.9, intake: 1.4, mech: 1.0, block: 1.0 , leak: 0.16 }, cabinGain: 1.3, crackle: 0.12, jitter: 0.02, turb: 0.12, noise: 0.15,
+      timingJitterDeg: 0.5, overrunAir: 0.16, cabin: { exhaust: 0.9, intake: 1.4, mech: 1.0, block: 1.0 , leak: 0.35 }, cabinGain: 1.15, crackle: 0.12, jitter: 0.02, turb: 0.12, noise: 0.15,
       blockHz: 180, blockGain: 0.6, exhaustGain: 0.97, drive: 1.2, starterHz: 450,
     },
   },

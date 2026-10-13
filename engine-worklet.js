@@ -85,6 +85,10 @@ function buildPulse(lambda, p, K) {
 // harmonics so nothing lands above Nyquist and folds back as fizz.
 const MIPS = [18, 13, 9, 6, 4, 3, 2];
 
+// The physical engine model (engine-physics.js) is loaded into the same worklet scope first.
+const PhysCoreClass = () => (typeof globalThis !== 'undefined' && globalThis.PhysCore)
+  || (typeof require === 'function' ? require('./engine-physics.js').PhysCore : null);
+
 const crossed = (at, prev, ph, wrapped) => (wrapped ? (at > prev || at <= ph) : (at > prev && at <= ph));
 
 class EngineDSP {
@@ -154,6 +158,8 @@ class EngineDSP {
     this.boost = 0; this.bov = 0; this.bovT = 0; this.fph = 0;
     this.gph = 0; this.dph = 0; this.aph = 0; this.sph = 0;
     this.bankIn = new Float32Array(this.banks.length);
+    const PC = PhysCoreClass();
+    this.phys = cfg.physics && PC && this.model !== 'classic' ? new PC({ ...cfg.physics, idleRpm: cfg.idle }, cfg.firing, sr) : null;
     this.control();
   }
 
@@ -167,6 +173,7 @@ class EngineDSP {
     this.starter = !!p.starter; this.crackleBoost = p.crackleBoost || 0;
     this.speed = p.speed || 0; this.cabin = p.listen !== 'outside';
     this.sport = !!p.sport;
+    if (p.model && p.model !== this.model) { this.model = p.model; if (this.cfg) this.configure(this.cfg); }
   }
 
   // Everything that follows rpm, load and temperature, refreshed every 32 samples.
@@ -178,6 +185,7 @@ class EngineDSP {
     const tT = this.rpm < 50 ? 300 : 450 + 600 * this.load * burning + 250 * rn;
     this.temp += (tT - this.temp) * blk / (tT > this.temp ? 3 : 7);
     this.tScale = 1 / Math.sqrt(this.temp / 700);
+    if (this.phys) this.phys.setGas(this.temp);
 
     this.dN = decay(0.0016, sr);
     this.cR = decay(0.00012, sr); this.cF = decay(0.0007, sr); this.cN = decay(0.004, sr);
@@ -289,89 +297,113 @@ class EngineDSP {
         }
       }
 
-      // Exhaust pulses through their header runners; intake pulses into the plenum.
-      for (let b = 0; b < nb; b++) bankIn[b] = 0;
-      let raw = 0, intake = 0;
-      const turb = cfg.turb * load;
-      for (let i = 0; i < cyl.length; i++) {
-        const c = cyl[i];
-        let p = 0;
-        if (c.u < 1) {
-          const tL = c.tab.L, tF = c.tab.F;
-          const x = c.u * TBL, k = x | 0, f = x - k;
-          const a = tL[k] + (tL[k + 1] - tL[k]) * f, b = tF[k] + (tF[k + 1] - tF[k]) * f;
-          p = c.amp * (a + (b - a) * c.mix) * (1 + turb * rnd());
-          c.u += c.du;
-        }
-        c.nz *= this.dN;
-        p += c.nz * rnd();
-        raw += p;
-        c.rlp += (c.runner.read(c.rLen * ts) - c.rlp) * 0.5;
-        const y = p + cfg.runnerFb * c.rlp;
-        c.runner.write(y);
-        bankIn[c.bank] += y;
-        if (c.iu < 1) {
-          const tL = this.tIntake;
-          const x = c.iu * TBL, k = x | 0;
-          intake -= c.iamp * (tL[k] + (tL[k + 1] - tL[k]) * (x - k));
-          c.iu += c.idu;
-        }
-      }
-
-      // Overrun crackles: unburnt fuel lights off in the hot pipe a few milliseconds later.
-      for (let k = this.crackles.length - 1; k >= 0; k--) {
-        const q = this.crackles[k];
-        if (--q.wait <= 0) {
-          const ck = banks[q.bank].ck;
-          ck.e1 = q.amp; ck.e2 = q.amp; ck.nz = q.amp * 1.3;
-          this.crackles.splice(k, 1);
-        }
-      }
-
-      // Bank pipes (Karplus-Strong style), then the shared rear section.
-      let tailIn = 0;
-      const rasp = 1 + cfg.rasp * (0.2 + load) * 3;
-      const pa = cfg.pipeA, pb = cfg.pipeB, pfb = cfg.pipeFb;
-      for (let b = 0; b < nb; b++) {
-        const bk = banks[b], ck = bk.ck;
-        ck.e1 *= this.cR; ck.e2 *= this.cF; ck.nz *= this.cN;
-        bk.crack = (ck.e2 - ck.e1) + ck.nz * rnd();
-        // Strong pulses steepen as they travel: soft saturation adds the rasp.
-        const x = Math.tanh((bankIn[b] + bk.crack) * rasp) / Math.sqrt(rasp);
-        const d = bk.pLen * ts;
-        const back = pa * bk.pipe.read(d) + pb * bk.pipe.read(d + 1);
-        const y = x + pfb * back;
-        bk.pipe.write(y);
-        bk.y = y; tailIn += y;
-      }
-      const td = this.tLen * ts;
-      const tback = 0.5 * this.tail.read(td) + 0.42 * this.tail.read(td + 1);
-      const tail = tailIn / nb + cfg.tail.fb * tback;
-      this.tail.write(tail);
-
-      let exL = 0, exR = 0;
-      const tm = cfg.tail.mix, vm = this.vmix, cg = cfg.valve ? cfg.valve.closedGain : 1;
-      for (let b = 0; b < nb; b++) {
-        const bk = banks[b];
-        const y = bk.y * (1 - tm) + tail * tm;
-        let m = y * cfg.mufflerDirect;
-        for (let j = 0; j < bk.muff.length; j++) m += bk.muff[j].f.run(y) * bk.muff[j].g;
-        const closed = bk.closed.run(m) * cg;
-        m = closed + (m - closed) * vm;
-        m = bk.tone.run(m) + bk.crack * 0.3;
-        exL += m * bk.gl; exR += m * bk.gr;
-      }
-
-      // Induction: plenum resonance plus roar through the intake runner.
+      let exL = 0, exR = 0, raw = 0, induction = 0;
       const it = cfg.intake, rn = rpm / rl;
-      this.ilp += (this.irun.read(this.iLen * 1.2) - this.ilp) * 0.6;
-      const iy = intake - 0.4 * this.ilp;
-      this.irun.write(iy);
+      if (this.phys) {
+        // Physical engine: cylinders, valves, combustion and exhaust waves, simulated.
+        for (let k = this.crackles.length - 1; k >= 0; k--) {
+          const q = this.crackles[k];
+          if (--q.wait <= 0) { const ck = banks[q.bank].ck; ck.e1 = q.amp; ck.e2 = q.amp; ck.nz = q.amp * 1.3; this.crackles.splice(k, 1); }
+        }
+        for (let b = 0; b < nb; b++) {
+          const ck = banks[b].ck;
+          ck.e1 *= this.cR; ck.e2 *= this.cF; ck.nz *= this.cN;
+          banks[b].crack = (ck.e2 - ck.e1) + ck.nz * rnd();
+          // Unburnt fuel lighting off in the collector: a real pressure kick into the pipes.
+          if (banks[b].crack !== 0) this.phys.crack(b, banks[b].crack * cfg.physics.crackPa);
+        }
+        const boostBar = cfg.turbo ? this.boost * (cfg.turbo.maxBar ?? 1) : 0;
+        const o = this.phys.step(prev, dph, rpm, load, this.fuelCut, boostBar, this.vmix, this.jit, rnd);
+        const g = cfg.physics.gain;
+        // Pressure waves steepen as they travel at this amplitude: a little saturation for the rasp.
+        const dr = 1 + cfg.rasp * 2;
+        exL = Math.tanh(o.l * g.exhaust * dr) / dr; exR = Math.tanh(o.r * g.exhaust * dr) / dr;
+        raw = o.block * g.block;
+        const partOpen = load > 0.03 && !this.fuelCut ? Math.exp(-((load - 0.18) ** 2) / 0.02) : 0;
+        induction = o.intake * g.intake + this.hissBp.run(rnd()) * this.env * partOpen * (0.3 + rn) * (it.hiss ?? 0.05);
+      } else {
+        // Exhaust pulses through their header runners; intake pulses into the plenum.
+        for (let b = 0; b < nb; b++) bankIn[b] = 0;
+        let intake = 0;
+        const turb = cfg.turb * load;
+        for (let i = 0; i < cyl.length; i++) {
+          const c = cyl[i];
+          let p = 0;
+          if (c.u < 1) {
+            const tL = c.tab.L, tF = c.tab.F;
+            const x = c.u * TBL, k = x | 0, f = x - k;
+            const a = tL[k] + (tL[k + 1] - tL[k]) * f, b = tF[k] + (tF[k + 1] - tF[k]) * f;
+            p = c.amp * (a + (b - a) * c.mix) * (1 + turb * rnd());
+            c.u += c.du;
+          }
+          c.nz *= this.dN;
+          p += c.nz * rnd();
+          raw += p;
+          c.rlp += (c.runner.read(c.rLen * ts) - c.rlp) * 0.5;
+          const y = p + cfg.runnerFb * c.rlp;
+          c.runner.write(y);
+          bankIn[c.bank] += y;
+          if (c.iu < 1) {
+            const tL = this.tIntake;
+            const x = c.iu * TBL, k = x | 0;
+            intake -= c.iamp * (tL[k] + (tL[k + 1] - tL[k]) * (x - k));
+            c.iu += c.idu;
+          }
+        }
+
+        // Overrun crackles: unburnt fuel lights off in the hot pipe a few milliseconds later.
+        for (let k = this.crackles.length - 1; k >= 0; k--) {
+          const q = this.crackles[k];
+          if (--q.wait <= 0) {
+            const ck = banks[q.bank].ck;
+            ck.e1 = q.amp; ck.e2 = q.amp; ck.nz = q.amp * 1.3;
+            this.crackles.splice(k, 1);
+          }
+        }
+
+        // Bank pipes (Karplus-Strong style), then the shared rear section.
+        let tailIn = 0;
+        const rasp = 1 + cfg.rasp * (0.2 + load) * 3;
+        const pa = cfg.pipeA, pb = cfg.pipeB, pfb = cfg.pipeFb;
+        for (let b = 0; b < nb; b++) {
+          const bk = banks[b], ck = bk.ck;
+          ck.e1 *= this.cR; ck.e2 *= this.cF; ck.nz *= this.cN;
+          bk.crack = (ck.e2 - ck.e1) + ck.nz * rnd();
+          // Strong pulses steepen as they travel: soft saturation adds the rasp.
+          const x = Math.tanh((bankIn[b] + bk.crack) * rasp) / Math.sqrt(rasp);
+          const d = bk.pLen * ts;
+          const back = pa * bk.pipe.read(d) + pb * bk.pipe.read(d + 1);
+          const y = x + pfb * back;
+          bk.pipe.write(y);
+          bk.y = y; tailIn += y;
+        }
+        const td = this.tLen * ts;
+        const tback = 0.5 * this.tail.read(td) + 0.42 * this.tail.read(td + 1);
+        const tail = tailIn / nb + cfg.tail.fb * tback;
+        this.tail.write(tail);
+
+        const tm = cfg.tail.mix, vm = this.vmix, cg = cfg.valve ? cfg.valve.closedGain : 1;
+        for (let b = 0; b < nb; b++) {
+          const bk = banks[b];
+          const y = bk.y * (1 - tm) + tail * tm;
+          let m = y * cfg.mufflerDirect;
+          for (let j = 0; j < bk.muff.length; j++) m += bk.muff[j].f.run(y) * bk.muff[j].g;
+          const closed = bk.closed.run(m) * cg;
+          m = closed + (m - closed) * vm;
+          m = bk.tone.run(m) + bk.crack * 0.3;
+          exL += m * bk.gl; exR += m * bk.gr;
+        }
+
+        // Induction: plenum resonance plus roar through the intake runner.
+        this.ilp += (this.irun.read(this.iLen * 1.2) - this.ilp) * 0.6;
+        const iy = intake - 0.4 * this.ilp;
+        this.irun.write(iy);
+        // Part throttle: air squeezing past a nearly closed throttle plate gives a faint hiss.
+        const partOpen = load > 0.03 && !this.fuelCut ? Math.exp(-((load - 0.18) ** 2) / 0.02) : 0;
+        induction = this.plenum.run(iy) * 1.6 + this.roarBp.run(rnd()) * this.env * load * (0.2 + rn) * it.roar
+          + this.hissBp.run(rnd()) * this.env * partOpen * (0.3 + rn) * (it.hiss ?? 0.05);
+      }
       this.env += (Math.abs(raw) - this.env) * 0.01;
-      // Part throttle: air squeezing past a nearly closed throttle plate gives a faint hiss.
-      const partOpen = load > 0.03 && !this.fuelCut ? Math.exp(-((load - 0.18) ** 2) / 0.02) : 0;
-      const induction = this.plenum.run(iy) * 1.6 + this.roarBp.run(rnd()) * this.env * load * (0.2 + rn) * it.roar
-        + this.hissBp.run(rnd()) * this.env * partOpen * (0.3 + rn) * (it.hiss ?? 0.05);
 
       // Engine block and valvetrain.
       const blk = this.blockLp2.run(this.blockLp.run(raw)) * cfg.blockGain;
