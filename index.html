@@ -116,14 +116,15 @@ button { cursor: pointer; }
 .tag { font: 700 12px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 10px; border-radius: 8px; background: var(--surface-2); color: var(--dim); }
 .tag.on { color: var(--fg); }
 
-.controls { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 12px; min-height: 0; }
+.controls { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 12px; min-height: 0; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
 .seg button { border: 0; background: transparent; border-radius: 9px; min-height: 48px; font-weight: 700; font-size: 15px; color: var(--dim); letter-spacing: 0.04em; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 0 var(--line), inset 0 -3px 0 var(--accent); }
 .box { padding: 14px; display: grid; gap: 12px; align-content: start; }
-.gearbox { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gearbox { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto minmax(64px, 1fr); gap: 10px; height: 100%; }
+.gear-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .gearbox .strip { grid-column: 1 / -1; }
-.paddle { height: 64px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); font: 700 30px/1 var(--font-num); display: grid; place-items: center; }
+.paddle { height: 100%; min-height: 64px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); font: 700 30px/1 var(--font-num); display: grid; place-items: center; }
 .paddle:active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; align-items: end; }
 .strip i { font: italic 800 18px/1 var(--font-num); font-style: italic; color: var(--dim); text-align: center; padding-block: 6px; border-radius: 6px; }
@@ -208,8 +209,45 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   background: var(--fg); color: var(--bg); padding: 12px 20px; border-radius: 999px; font-weight: 700; font-size: 15px;
 }
 
-/* Phones and narrow windows: stack and scroll. */
-@media (max-width: 900px), (max-height: 520px) {
+/* The Tesla's browser window is about 773 × 601: a compact landscape cockpit, still one screen. */
+@media (max-height: 720px), (max-width: 1050px) {
+  .app { gap: 8px; }
+  .top { height: 44px; gap: 14px; }
+  .brand { font-size: 17px; } .brand svg { width: 22px; height: 22px; }
+  .lights { height: 12px; gap: 4px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .src { height: 32px; font-size: 13px; padding-inline: 10px; }
+  .cockpit { grid-template-columns: minmax(118px, 0.8fr) minmax(0, 3fr) minmax(160px, 1fr); gap: 8px; }
+  .cars { gap: 6px; }
+  .car { padding: 8px 10px; min-height: 0; gap: 2px; }
+  .car b { font-size: clamp(20px, 4.2vh, 30px); }
+  .car span { font-size: 11px; }
+  .car em { top: 7px; right: 7px; font-size: 9px; padding: 3px 4px; }
+  .controls { gap: 8px; }
+  .seg button { min-height: 40px; font-size: 13px; }
+  .box { padding: 10px; gap: 8px; }
+  .paddle { min-height: 54px; font-size: 34px; }
+  .eng { display: none; }
+  .strip i { font-size: 15px; padding-block: 4px; }
+  .start { width: clamp(92px, 18vh, 124px); box-shadow: inset 0 0 0 2px var(--line), 0 0 0 4px var(--surface-2), 0 0 0 5px var(--line); }
+  .start.on { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 4px var(--surface-2), 0 0 0 5px var(--accent), 0 0 calc(var(--glow) * 24px) var(--accent-soft); }
+  .start b { font-size: 21px; } .start span { font-size: 9px; }
+  .telemetry { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr); gap: 8px; }
+  .telemetry.gps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #accBox { display: none; }
+  .metric { min-height: 56px; padding: 8px 12px; gap: 6px; }
+  .metric b { font-size: 22px; }
+  .pedal { min-height: 56px; font-size: 11px; letter-spacing: 0.12em; }
+  .pedals { gap: 6px; }
+  .gear { font-size: clamp(84px, 21vh, 200px); }
+  .speed b { font-size: clamp(40px, 8vh, 80px); }
+  .state { margin-top: 6px; font-size: 11px; padding: 5px 10px; }
+  .mode-tag .tag { font-size: 10px; padding: 5px 7px; }
+  .eng b { font-size: 14px; }
+}
+
+/* Phones in portrait and very small windows: stack and scroll. */
+@media (max-width: 640px), (max-height: 420px), (orientation: portrait) and (max-width: 900px) {
   body { overflow: auto; }
   html, body { height: auto; }
   .app { height: auto; grid-template-rows: auto; }
@@ -221,6 +259,7 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   .cars { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; }
   .controls { grid-template-rows: auto; }
   .telemetry, .telemetry.gps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #accBox { display: grid; }
   .pedals { grid-column: 1 / -1; }
   .eng { display: none; }
 }
@@ -267,19 +306,12 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
         <button type="button" data-mode="comfort" aria-pressed="true">COMFORT</button>
         <button type="button" data-mode="sport" aria-pressed="false">SPORT</button>
       </div>
-      <div class="panel box">
+      <div class="panel box gear-panel">
         <span class="cap">Gearbox · <span id="gearCount"></span></span>
         <div class="gearbox">
           <div class="strip" id="strip" aria-hidden="true"></div>
           <button class="paddle" id="downBtn" type="button" aria-label="Shift down">−</button>
           <button class="paddle" id="upBtn" type="button" aria-label="Shift up">+</button>
-        </div>
-      </div>
-      <div class="panel box">
-        <label class="cap" for="volume">Volume</label>
-        <div class="vol">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" stroke-linecap="round"/></svg>
-          <input id="volume" type="range" min="0" max="1.5" step="0.01" value="0.9">
         </div>
       </div>
       <button class="start" id="ignition" type="button" aria-label="Engine start / stop"><span>ENGINE</span><b>START</b><span>STOP</span></button>
@@ -289,7 +321,7 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   <footer class="telemetry" id="telemetry">
     <div class="panel metric"><span class="cap">Load</span><b id="loadVal">0<small>%</small></b><div class="bar red" id="loadBar"></div></div>
     <div class="panel metric" id="boostBox"><span class="cap">Boost</span><b id="boostVal">0.0<small>bar</small></b><div class="bar" id="boostBar"></div></div>
-    <div class="panel metric"><span class="cap">G-force</span><b id="accVal">0.00<small>g</small></b><div class="bar" id="accBar"></div></div>
+    <div class="panel metric" id="accBox"><span class="cap">G-force</span><b id="accVal">0.00<small>g</small></b><div class="bar" id="accBar"></div></div>
     <div class="panel metric"><span class="cap">Exhaust temp</span><b id="egtVal">20<small>°C</small></b><div class="bar red" id="egtBar"></div></div>
     <div class="pedals" id="pedals">
       <button id="driveBtn" class="pedal drive-btn" type="button"><span>Test drive</span></button>
@@ -311,7 +343,7 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
     </div>
     <label class="check" for="gpsStyle" id="simOnly">
       <input id="gpsStyle" type="checkbox">
-      <span>Feel it like the car will<small>Runs the simulator through the same 9 Hz, noisy GPS path as the car, and works out throttle from acceleration.</small></span>
+      <span>Feel it like the car will<small>Runs the simulator through the same 10 Hz GPS path as the car, and works out throttle from acceleration.</small></span>
     </label>
     <div id="gpsPanel" hidden>
       <dl class="kv">
@@ -344,6 +376,15 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
     <p>Run this once in the Tesla, parked, then drive a short way. It shows what the car's browser gives the app. Take a photo of the results and send it to me.</p>
     <div class="row"><button class="btn" id="checkBtn" type="button">Run car check</button><span class="name" id="checkState">Not run</span></div>
     <dl class="kv" id="checkOut"></dl>
+  </section>
+
+  <section>
+    <label class="cap" for="volume">Engine volume</label>
+    <div class="vol">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" stroke-linecap="round"/></svg>
+      <input id="volume" type="range" min="0" max="1.5" step="0.01" value="0.9">
+    </div>
+    <p>Sets the engine against everything else. The car's own volume wheel still sets the overall level.</p>
   </section>
 
   <section>
@@ -385,15 +426,15 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
     <div class="keys">
       <div><kbd>Space</kbd> start / stop</div>
       <div><kbd>↑</kbd> <kbd>W</kbd> throttle · <kbd>Shift</kbd> for 40% · <kbd>↓</kbd> <kbd>S</kbd> brake</div>
-      <div><kbd>E</kbd> / <kbd>Q</kbd> or steering scroll: shift up / down</div>
+      <div><kbd>E</kbd> / <kbd>Q</kbd> shift up / down. In the Tesla, the steering-wheel scroll button doesn't reach the browser, so use the on-screen − and +.</div>
     </div>
   </section>
 </aside>
 
 <div id="toast" role="status" hidden></div>
 
-<script src="engines.js?v=4"></script>
-<script src="drive-model.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="engines.js?v=6"></script>
+<script src="drive-model.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

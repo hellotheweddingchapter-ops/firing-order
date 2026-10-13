@@ -31,7 +31,7 @@ let ctx = null, node = null, gain = null, analyser = null;
 async function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return; }
   ctx = new AudioContext({ latencyHint: 'interactive' });
-  await ctx.audioWorklet.addModule('engine-worklet.js?v=4');
+  await ctx.audioWorklet.addModule('engine-worklet.js?v=6');
   node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2] });
   gain = ctx.createGain(); gain.gain.value = +$('#volume').value;
   analyser = ctx.createAnalyser(); analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.6;
@@ -121,12 +121,12 @@ function tick() {
     }
     S.v = Math.max(0, S.v + acc * dt); S.aTrue = S.v > 0 ? acc : 0;
     if (S.gpsStyle || S.drive) {
-      // Feed the simulated speed through what the car's GPS delivers: 9 Hz, noisy, slightly late.
+      // Feed the simulated speed through what the car's GPS delivers: 10 Hz (measured in a Model 3/Y), slightly late.
       S.est.predict(dt);
       S.hist = S.hist || [];
       S.hist.push([S.t, S.v]); while (S.hist.length && S.hist[0][0] < S.t - 1) S.hist.shift();
       if (S.t >= S.nextFix) {
-        S.nextFix = S.t + 1 / 9;
+        S.nextFix = S.t + 1 / 10;
         const past = S.hist.find((h) => h[0] >= S.t - 0.2) || S.hist[0];
         S.est.measure(Math.max(0, past[1] + 0.1 * gaussian()), 0.01);
       }
@@ -440,13 +440,22 @@ function runCarCheck() {
   put('Wake lock', 'wakeLock' in navigator ? 'yes' : 'no');
   put('Offline cache', 'serviceWorker' in navigator ? (navigator.serviceWorker.controller ? 'active' : 'available, not yet active') : 'no');
   // GPS
-  const fixes = [];
-  let watch = null;
+  const fixes = [], nf = new SpeedFilter(6, true);
+  let watch = null, moving = 0, lastT = null;
   if ('geolocation' in navigator) {
     put('GPS', 'waiting…');
     watch = navigator.geolocation.watchPosition((p) => {
-      fixes.push({ t: performance.now(), s: p.coords.speed, acc: p.coords.accuracy, h: p.coords.heading });
+      const now = performance.now();
+      fixes.push({ t: now, s: p.coords.speed, acc: p.coords.accuracy, h: p.coords.heading });
       const n = fixes.length;
+      put('GPS', 'receiving');
+      // Speed noise while moving, learned by the same filter the app uses.
+      if (p.coords.speed != null) {
+        if (lastT !== null) nf.predict((now - lastT) / 1000);
+        lastT = now; nf.measure(p.coords.speed, 0.01);
+        if (p.coords.speed > 2) moving++;
+        put('Speed noise moving', moving > 30 ? `±${Math.sqrt(nf.r).toFixed(3)} m/s (${moving} fixes)` : 'drive to measure');
+      }
       if (n > 1) {
         const gaps = fixes.slice(1).map((f, i) => f.t - fixes[i].t).sort((a, b) => a - b);
         const med = gaps[Math.floor(gaps.length / 2)];
@@ -469,7 +478,7 @@ function runCarCheck() {
   addEventListener('wheel', onWheel, { capture: true });
   addEventListener('keydown', onKey, { capture: true });
   put('Scroll button', 'roll the left scroll wheel now');
-  let left = 60;
+  let left = 90;
   $('#checkBtn').disabled = true;
   const timer = setInterval(() => {
     left--;
@@ -482,6 +491,7 @@ function runCarCheck() {
       removeEventListener('wheel', onWheel, { capture: true });
       removeEventListener('keydown', onKey, { capture: true });
       if (!seen.size) put('Scroll button', 'nothing received');
+      put('GPS', fixes.length ? 'done' : 'no fixes');
       $('#checkBtn').disabled = false;
     }
   }, 1000);
@@ -691,5 +701,5 @@ requestAnimationFrame(frame);
 
 // Offline: once loaded over HTTPS, the app keeps working in the car without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js?v=4').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=6').catch(() => {});
 }

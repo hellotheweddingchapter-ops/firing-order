@@ -25,8 +25,8 @@ const clampN = (x, a, b) => (x < a ? a : x > b ? b : x);
 // Constant-acceleration Kalman filter on speed. Works at any fix rate (1 Hz or 10 Hz) because
 // the process noise scales with the time between updates.
 class SpeedFilter {
-  constructor(q = 6) { this.q = q; this.reset(); }
-  reset() { this.v = 0; this.a = 0; this.aS = 0; this.P = [4, 0, 4]; this.init = false; this.sinceFix = 1e9; }
+  constructor(q = 6, adaptive = true) { this.q = q; this.adaptive = adaptive; this.reset(); }
+  reset() { this.v = 0; this.a = 0; this.aS = 0; this.P = [4, 0, 4]; this.init = false; this.sinceFix = 1e9; this.nv = null; }
   predict(dt) {
     this.sinceFix += dt;
     // No fixes for a while (tunnel, car park): hold speed and let acceleration relax to zero.
@@ -40,11 +40,19 @@ class SpeedFilter {
     ];
     this.aS += (this.a - this.aS) * Math.min(1, dt / 0.12);
   }
-  // z: measured speed (m/s). r: its variance.
+  // z: measured speed (m/s). r: its variance as a starting guess. The filter then learns how
+  // noisy the car's speed really is from its own prediction errors, and trusts it accordingly.
   measure(z, r = 0.04) {
     this.sinceFix = 0;
     if (!this.init) { this.v = z; this.init = true; return; }
-    const [p00, p01, p11] = this.P, s = p00 + r, k0 = p00 / s, k1 = p01 / s, y = z - this.v;
+    const [p00, p01, p11] = this.P, y = z - this.v;
+    if (this.adaptive) {
+      if (this.nv === null) this.nv = r;
+      if (z > 1) this.nv += (Math.max(y * y - p00, 0) - this.nv) * 0.02; // only while moving: parked speed reads a clean zero
+      r = clampN(this.nv, 0.0004, 1);
+    }
+    this.r = r;
+    const s = p00 + r, k0 = p00 / s, k1 = p01 / s;
     this.v = Math.max(0, this.v + k0 * y);
     this.a = clampN(this.a + k1 * y, -12, 12);
     this.P = [(1 - k0) * p00, (1 - k0) * p01, p11 - k1 * p01];
