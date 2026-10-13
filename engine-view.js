@@ -4,7 +4,7 @@
 
 const EngineView = (() => {
   const SR = 48000;
-  let core = null, coreFor = null, open = false, slow = 2.2, sel = 0, raf = 0, simPhase = 0;
+  let core = null, coreFor = null, open = false, slow = 2.2, sel = 0, raf = 0, simPhase = 0, mode = '3d', err3d = null;
   const $v = (q) => document.querySelector(q);
   const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -12,6 +12,7 @@ const EngineView = (() => {
     const e = ENG();
     core = new PhysCore({ ...e.sound.physics, idleRpm: e.idle }, e.sound.firing, SR);
     core.record = true; coreFor = S.engineId; simPhase = 0;
+    Engine3D.reset(); if (mode === '3d') want3d();
     // Run it up to a steady state before showing anything.
     advance(SR * 0.4, true);
     sel = 0;
@@ -221,16 +222,31 @@ const EngineView = (() => {
       const cycle = 120 / i.rpm, steps = Math.max(1, Math.round(SR * cycle / slow / 60));
       advance(Math.min(steps, 2000));
     }
-    drawCylinders(); drawTrace(); drawExhaust(); drawStats();
-    $v('#evNote').textContent = i.rpm > 0
+    if (mode === '3d') { if (Engine3D.ready) { Engine3D.update(core, ENG(), S.egt || 20, i.boost); Engine3D.render(); } }
+    else { drawCylinders(); drawTrace(); drawExhaust(); }
+    drawStats();
+    if (err3d && mode === '3d') $v('#evNote').textContent = err3d;
+    else $v('#evNote').textContent = i.rpm > 0
       ? `The same simulation as the sound, slowed ${Math.round(slow * i.rpm / 120)}× so one engine cycle takes ${slow} s.`
       : 'Start the engine to see it run.';
     raf = requestAnimationFrame(frame);
   }
 
+  function want3d() {
+    Engine3D.ensure($v('#ev3d'), ENG(), core, S.engineId).then(() => { err3d = null; }).catch((e) => { err3d = 'The 3D engine could not load (' + e.message + '). The diagram still works.'; });
+  }
+  function setMode(m) {
+    mode = m;
+    $v('#ev3dWrap').hidden = m !== '3d'; $v('#evGrid').hidden = m === '3d';
+    document.querySelectorAll('[data-evmode]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.evmode === m));
+    if (m === '3d' && core) want3d();
+  }
+  document.querySelectorAll('[data-evmode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.evmode)));
+
   function show() {
     open = true; $v('#engineView').hidden = false;
     if (coreFor !== S.engineId || !core) build();
+    setMode(mode);
     cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
   }
   function hide() { open = false; $v('#engineView').hidden = true; cancelAnimationFrame(raf); }

@@ -271,7 +271,10 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
 .ev-title { display: grid; gap: 4px; min-width: 0; }
 .ev-title h2 { margin: 0; font: italic 800 24px/1 var(--font-num); }
 .ev-ctrl { display: flex; gap: 10px; align-items: center; }
-.ev-ctrl .seg button { min-height: 40px; padding-inline: 14px; }
+.ev-ctrl .seg button { min-height: 40px; padding-inline: 12px; font-size: 13px; }
+.ev-3d { position: relative; min-height: 0; overflow: hidden; }
+.ev-3d canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.ev-hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--dim); pointer-events: none; }
 .ev-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 10px; min-height: 0; }
 .ev-box { padding: 10px 12px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; min-height: 0; min-width: 0; }
 .ev-box canvas { width: 100%; height: 100%; display: block; min-height: 0; }
@@ -479,6 +482,10 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   <header class="ev-head">
     <div class="ev-title"><h2 id="evTitle">Engine</h2><span id="evSub" class="cap"></span></div>
     <div class="ev-ctrl">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" data-evmode="3d" aria-pressed="true">3D engine</button>
+        <button type="button" data-evmode="diagram" aria-pressed="false">Diagram</button>
+      </div>
       <div class="seg" role="group" aria-label="Slow motion">
         <button type="button" data-slow="2.2" aria-pressed="true">Slow</button>
         <button type="button" data-slow="7" aria-pressed="false">Very slow</button>
@@ -486,7 +493,8 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
       <button class="icon-btn" id="evClose" type="button" aria-label="Close engine view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
   </header>
-  <div class="ev-grid">
+  <div class="ev-3d panel" id="ev3dWrap"><canvas id="ev3d" aria-label="3D engine"></canvas><span class="ev-hint">Drag to turn · pinch or scroll to zoom</span></div>
+  <div class="ev-grid" id="evGrid" hidden>
     <section class="panel ev-box ev-cyl"><span class="cap">Cylinders · tap one to trace it</span><canvas id="evCyls"></canvas></section>
     <section class="panel ev-box ev-tr">
       <div class="ev-tr-head"><span class="cap">Cylinder pressure, one cycle</span><select id="evCyl" aria-label="Cylinder to trace"></select></div>
@@ -500,11 +508,12 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
 
 <div id="toast" role="status" hidden></div>
 
-<script src="engines.js?v=10"></script>
-<script src="engines-fitted.js?v=10"></script>
-<script src="drive-model.js?v=10"></script>
-<script src="engine-physics.js?v=10"></script>
-<script src="app.js?v=10"></script>
-<script src="engine-view.js?v=10"></script>
+<script src="engines.js?v=11"></script>
+<script src="engines-fitted.js?v=11"></script>
+<script src="drive-model.js?v=11"></script>
+<script src="engine-physics.js?v=11"></script>
+<script src="app.js?v=11"></script>
+<script src="engine3d.js?v=11"></script>
+<script src="engine-view.js?v=11"></script>
 </body>
 </html>

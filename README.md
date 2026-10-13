@@ -20,7 +20,7 @@ Checked against real engines: about 0.3-0.45 bar manifold pressure at light crui
 
 It runs at about 6-11x real time. A quick speed check when you start the engine falls back to the Classic sound if the screen's computer is too slow. Settings → Engine sound switches between the two.
 
-**Engine view** (the button next to settings): the simulated engine drawn live: pistons, rods and cranks, valves opening, the gas heating and burning, each cylinder's pressure, a full-cycle pressure trace for the cylinder you tap, and the pressure waves travelling through the exhaust. It runs the same simulation as the sound, with the same revs, throttle, boost and lift-off, slowed down so one engine cycle takes 2 s (or 7 s).
+**Engine view** (the button next to settings) opens on a **3D engine** built from each car's real geometry (flat-six, 60° V6, 90° V8, inline four): crankshaft, pistons and rods on true kinematics, camshafts at half speed, valves, combustion glowing through a see-through block, headers glowing with exhaust heat and flashing with each pulse, turbos spinning with boost. Drag to turn, pinch or scroll to zoom. Three.js (r128) is loaded from cdnjs when the view opens and cached for offline use. The **Diagram** tab shows the same engine as a schematic: pistons, rods and cranks, valves opening, the gas heating and burning, each cylinder's pressure, a full-cycle pressure trace for the cylinder you tap, and the pressure waves travelling through the exhaust. It runs the same simulation as the sound, with the same revs, throttle, boost and lift-off, slowed down so one engine cycle takes 2 s (or 7 s).
 
 ## Run it
 

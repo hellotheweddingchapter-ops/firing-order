@@ -16,7 +16,7 @@ const ENGINES = {
     upshiftCrack: 0.15, downshiftCrack: 0.1,
     sound: {
       // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
-      physics: {"redline":9000,"bore":0.102,"stroke":0.0815,"cr":13.3,"valves":4,"inValve":0.042,"exValve":0.035,"cam":{"ivo":40,"ivc":75,"evo":70,"evc":40,"lift":0.0125},"plenum":0.006,"throttle":0.0108,"idleArea":0.000016,"idleMap":0.5,"exhaust":{"runner":0.4,"runnerD":0.04,"collector":0.25,"collectorD":0.06,"merge":true,"mid":0.6,"midD":0.07,"box":0.35,"boxD":0.14,"tail":0.25,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
+      physics: {"look":{"type":"flat","angle":180,"covers":"#2a2d33","stacks":true},"redline":9000,"bore":0.102,"stroke":0.0815,"cr":13.3,"valves":4,"inValve":0.042,"exValve":0.035,"cam":{"ivo":40,"ivc":75,"evo":70,"evc":40,"lift":0.0125},"plenum":0.006,"throttle":0.0108,"idleArea":0.000016,"idleMap":0.5,"exhaust":{"runner":0.4,"runnerD":0.04,"collector":0.25,"collectorD":0.06,"merge":true,"mid":0.6,"midD":0.07,"box":0.35,"boxD":0.14,"tail":0.25,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 900, redline: 9000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 0.86, gain: 1.00 }, // 1
@@ -54,7 +54,7 @@ const ENGINES = {
     upshiftCrack: 0.05, downshiftCrack: 0.03,
     sound: {
       // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
-      physics: {"redline":7000,"bore":0.0955,"stroke":0.0884,"cr":9,"valves":4,"inValve":0.037,"exValve":0.032,"cam":{"ivo":15,"ivc":55,"evo":55,"evc":15,"lift":0.0105},"plenum":0.007,"throttle":0.0057,"idleArea":0.000012,"idleMap":0.45,"exhaust":{"runner":0.25,"runnerD":0.038,"collector":0.12,"collectorD":0.055,"turbine":0.045,"downpipe":0.7,"merge":true,"mid":1.2,"midD":0.08,"box":0.5,"boxD":0.16,"tail":0.3,"tailD":0.08,"tips":2},"gain":{"exhaust":0.2,"intake":0.25,"block":0.000004},"crackPa":12000},
+      physics: {"look":{"type":"v","angle":60,"covers":"#151619","stacks":false},"redline":7000,"bore":0.0955,"stroke":0.0884,"cr":9,"valves":4,"inValve":0.037,"exValve":0.032,"cam":{"ivo":15,"ivc":55,"evo":55,"evc":15,"lift":0.0105},"plenum":0.007,"throttle":0.0057,"idleArea":0.000012,"idleMap":0.45,"exhaust":{"runner":0.25,"runnerD":0.038,"collector":0.12,"collectorD":0.055,"turbine":0.045,"downpipe":0.7,"merge":true,"mid":1.2,"midD":0.08,"box":0.5,"boxD":0.16,"tail":0.3,"tailD":0.08,"tips":2},"gain":{"exhaust":0.2,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 800, redline: 7000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 1.30, gain: 1.00 },
@@ -93,7 +93,7 @@ const ENGINES = {
     upshiftCrack: 0.75, downshiftCrack: 0.15,
     sound: {
       // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
-      physics: {"redline":6500,"bore":0.0825,"stroke":0.0928,"cr":9.3,"valves":4,"inValve":0.034,"exValve":0.028,"cam":{"ivo":12,"ivc":45,"evo":50,"evc":12,"lift":0.0105},"plenum":0.004,"throttle":0.0028,"idleArea":0.000008,"idleMap":0.42,"exhaust":{"runner":0.15,"runnerD":0.036,"collector":0.1,"collectorD":0.05,"turbine":0.042,"downpipe":0.6,"mid":2,"midD":0.07,"box":0.5,"boxD":0.14,"tail":0.3,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
+      physics: {"look":{"type":"inline","angle":0,"covers":"#1b1c1f","stacks":false},"redline":6500,"bore":0.0825,"stroke":0.0928,"cr":9.3,"valves":4,"inValve":0.034,"exValve":0.028,"cam":{"ivo":12,"ivc":45,"evo":50,"evc":12,"lift":0.0105},"plenum":0.004,"throttle":0.0028,"idleArea":0.000008,"idleMap":0.42,"exhaust":{"runner":0.15,"runnerD":0.036,"collector":0.1,"collectorD":0.05,"turbine":0.042,"downpipe":0.6,"mid":2,"midD":0.07,"box":0.5,"boxD":0.14,"tail":0.3,"tailD":0.075,"tips":2},"gain":{"exhaust":0.1,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 750, redline: 6500,
       firing: [
         { deg: 0,   runnerMs: 1.20, gain: 1.00 }, // 1
@@ -130,7 +130,7 @@ const ENGINES = {
     upshiftCrack: 0.25, downshiftCrack: 0.35,
     sound: {
       // Physical build (engine-physics.js): metres, m², m³ and crank degrees.
-      physics: {"redline":9000,"bore":0.094,"stroke":0.081,"cr":12.5,"valves":4,"inValve":0.037,"exValve":0.031,"cam":{"ivo":24,"ivc":62,"evo":58,"evc":24,"lift":0.012},"plenum":0.007,"throttle":0.012,"idleArea":0.000018,"idleMap":0.5,"exhaust":{"runner":0.33,"runnerD":0.04,"pairs":true,"secondary":0.3,"secondaryD":0.048,"collector":0.2,"collectorD":0.058,"merge":false,"mid":0.5,"midD":0.065,"box":0.35,"boxD":0.13,"tail":0.2,"tailD":0.07,"tips":1},"gain":{"exhaust":0.18,"intake":0.25,"block":0.000004},"crackPa":12000},
+      physics: {"look":{"type":"v","angle":90,"covers":"#b3121c","stacks":true},"redline":9000,"bore":0.094,"stroke":0.081,"cr":12.5,"valves":4,"inValve":0.037,"exValve":0.031,"cam":{"ivo":24,"ivc":62,"evo":58,"evc":24,"lift":0.012},"plenum":0.007,"throttle":0.012,"idleArea":0.000018,"idleMap":0.5,"exhaust":{"runner":0.33,"runnerD":0.04,"pairs":true,"secondary":0.3,"secondaryD":0.048,"collector":0.2,"collectorD":0.058,"merge":false,"mid":0.5,"midD":0.065,"box":0.35,"boxD":0.13,"tail":0.2,"tailD":0.07,"tips":1},"gain":{"exhaust":0.18,"intake":0.25,"block":0.000004},"crackPa":12000},
       idle: 1000, redline: 9000,
       firing: [
         { deg: 0,   bank: 0, runnerMs: 0.90, gain: 1.00 }, // 1
