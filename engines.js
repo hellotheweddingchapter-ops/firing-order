@@ -32,12 +32,12 @@ const ENGINES = {
       mufflerDirect: 0.5,
       valve: { rpm: 4500, load: 0.75, closedHz: 1200, closedGain: 0.6 },
       tone: { base: 1200, load: 4000, rpm: 0.45 },
-      rasp: 0.25,
+      dyn: 1.75, rasp: 0.25,
       intake: { gain: 0.9, hz: 520, q: 1.6, runnerMs: 1.6, flapRpm: 5600, flapHz: 780, roar: 0.35 },
       mech: { click: 0.12, noise: 0.06 },
       turbo: null,
-      timingJitterDeg: 0.6, overrunAir: 0.18, cabin: { exhaust: 0.9, intake: 1.5, mech: 1.2, block: 1.1 , leak: 0.16 }, cabinGain: 1.25, crackle: 0.04, jitter: 0.025, turb: 0.15, noise: 0.15,
-      blockHz: 160, blockGain: 0.7, exhaustGain: 1.25, drive: 1.2, starterHz: 420,
+      timingJitterDeg: 0.6, overrunAir: 0.18, cabin: { exhaust: 0.9, intake: 1.5, mech: 1.2, block: 1.1 , leak: 0.16 }, cabinGain: 1.4, crackle: 0.04, jitter: 0.025, turb: 0.15, noise: 0.15,
+      blockHz: 160, blockGain: 0.7, exhaustGain: 1.55, drive: 1.2, starterHz: 420,
     },
   },
 
@@ -73,8 +73,8 @@ const ENGINES = {
       mech: { click: 0.05, noise: 0.05 },
       turbo: { count: 2, spoolRpm: 2400, lag: 0.55, whineBase: 2600, whineSpan: 7000, whineGain: 0.03, hissGain: 0.07, bov: 'whoosh', bovGain: 0.35 },
       gearWhine: { teeth: 29, gain: 0.012, perMs: 38, diffGain: 0.008 },
-      timingJitterDeg: 0.8, overrunAir: 0.22, cabin: { exhaust: 1.0, intake: 0.6, mech: 0.5, block: 1.3 , leak: 0.22 }, cabinGain: 1.25, crackle: 0.05, jitter: 0.03, turb: 0.25, noise: 0.3,
-      blockHz: 150, blockGain: 0.9, exhaustGain: 0.9, drive: 1.2, starterHz: 380,
+      timingJitterDeg: 0.8, overrunAir: 0.22, cabin: { exhaust: 1.0, intake: 0.6, mech: 0.5, block: 1.3 , leak: 0.22 }, cabinGain: 1.15, crackle: 0.05, jitter: 0.03, turb: 0.25, noise: 0.3,
+      blockHz: 150, blockGain: 0.9, exhaustGain: 1.0, drive: 1.2, starterHz: 380,
     },
   },
 
@@ -109,7 +109,7 @@ const ENGINES = {
       turbo: { count: 1, spoolRpm: 1800, lag: 0.45, whineBase: 3000, whineSpan: 6000, whineGain: 0.015, hissGain: 0.06, bov: 'whoosh', bovGain: 0.3 },
       actuator: 0.05,
       timingJitterDeg: 0.8, overrunAir: 0.25, cabin: { exhaust: 1.0, intake: 0.5, mech: 0.4, block: 1.4 , leak: 0.32 }, cabinGain: 1.12, crackle: 0.09, jitter: 0.03, turb: 0.2, noise: 0.3,
-      blockHz: 170, blockGain: 1.0, exhaustGain: 0.75, drive: 1.25, starterHz: 400,
+      blockHz: 170, blockGain: 1.0, exhaustGain: 0.95, drive: 1.25, starterHz: 400,
     },
   },
 
@@ -146,10 +146,14 @@ const ENGINES = {
       intake: { gain: 0.6, hz: 700, q: 1.4, runnerMs: 1.3, flapRpm: 6500, flapHz: 950, roar: 0.3 },
       mech: { click: 0.08, noise: 0.05 },
       turbo: null,
-      timingJitterDeg: 0.5, overrunAir: 0.16, cabin: { exhaust: 0.9, intake: 1.4, mech: 1.0, block: 1.0 , leak: 0.16 }, cabinGain: 1.7, crackle: 0.12, jitter: 0.02, turb: 0.12, noise: 0.15,
-      blockHz: 180, blockGain: 0.6, exhaustGain: 1.3, drive: 1.2, starterHz: 450,
+      timingJitterDeg: 0.5, overrunAir: 0.16, cabin: { exhaust: 0.9, intake: 1.4, mech: 1.0, block: 1.0 , leak: 0.16 }, cabinGain: 1.3, crackle: 0.12, jitter: 0.02, turb: 0.12, noise: 0.15,
+      blockHz: 180, blockGain: 0.6, exhaustGain: 0.97, drive: 1.2, starterHz: 450,
     },
   },
 };
 
-if (typeof module !== 'undefined') module.exports = ENGINES;
+if (typeof module !== 'undefined') {
+  module.exports = ENGINES;
+  // In Node (tools, offline renders) pick up the fitted settings the same way the page does.
+  try { require('./engines-fitted.js')(ENGINES); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
+}

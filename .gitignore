@@ -2,3 +2,5 @@
 renders/
 .vercelignore
 .DS_Store
+reference/
+tools/fit-*.log

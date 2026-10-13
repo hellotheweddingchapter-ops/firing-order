@@ -31,7 +31,7 @@ let ctx = null, node = null, gain = null, analyser = null;
 async function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return; }
   ctx = new AudioContext({ latencyHint: 'interactive' });
-  await ctx.audioWorklet.addModule('engine-worklet.js?v=7');
+  await ctx.audioWorklet.addModule('engine-worklet.js?v=8');
   node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2] });
   gain = ctx.createGain(); gain.gain.value = +$('#volume').value;
   analyser = ctx.createAnalyser(); analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.6;
@@ -701,5 +701,5 @@ requestAnimationFrame(frame);
 
 // Offline: once loaded over HTTPS, the app keeps working in the car without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js?v=7').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=8').catch(() => {});
 }

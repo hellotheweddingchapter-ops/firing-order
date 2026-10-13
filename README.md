@@ -48,3 +48,25 @@ The browser can't see the pedal, so everything comes from GPS speed:
 - `engines.js`: per-engine firing order, exhaust layout, gear ratios, tuning values
 - `drive-model.js`: Tesla model, GPS Kalman filter, load inference, test drive
 - `app.js`: gearbox, ignition, UI, car check
+
+## Matching real recordings
+
+`tools/match.js` compares the synthesis with real recordings and tunes it. It tracks the revs from
+the recording itself, measures each engine harmonic relative to the firing note per rpm range (order
+tracking) plus the tonal balance, ignores anything buried in the recording's noise, then adjusts the
+sound settings until the synthesis has the same fingerprint.
+
+```
+node tools/match.js gt3          # report the mismatch
+node tools/match.js gt3 --fit    # tune, writes tools/fitted-gt3.json
+```
+
+The recordings are used only for measurement; none is shipped with the app. They go in `reference/`
+(not committed):
+
+- "Porsche 997 GT3 RS.ogg" by Edvvc, CC BY-SA 3.0, Wikimedia Commons
+- "Ferrari 458 Italia.ogg" by Edvvc, CC BY-SA 3.0, Wikimedia Commons
+- "Nissan GT-R SpecV.ogg" by Edvvc, CC BY-SA 3.0, Wikimedia Commons
+- "2006 Porsche Cayman S engine sound.wav" by John64, CC BY-SA 3.0, Wikimedia Commons
+
+No free recording of an Audi S3 (2.0 TFSI) could be found, so the S3 is not fitted.

@@ -119,7 +119,7 @@ class EngineDSP {
       muff: cfg.muffler.map((m) => ({ f: new Biquad().set('bp', m.f, m.q, sr), g: m.g })),
       closed: new Biquad().set('lp', cfg.valve ? cfg.valve.closedHz : 20000, 0.7, sr),
       tone: new Biquad().set('lp', 2000, 0.7, sr),
-      gl: 1 - 0.45 * (b.pan || 0), gr: 1 + 0.45 * (b.pan || 0),
+      gl: (1 - 0.45 * (b.pan || 0)) * (b.gain ?? 1), gr: (1 + 0.45 * (b.pan || 0)) * (b.gain ?? 1),
       ck: { e1: 0, e2: 0, nz: 0 }, y: 0,
     }));
     this.tLen = ms(cfg.tail.ms); this.tail = new FDelay(this.tLen * 1.6 + 4);

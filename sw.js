@@ -1,6 +1,6 @@
 // Offline support for the car: serve from the network when there is one, from cache when not.
-const CACHE = 'firing-order-v6';
-const CORE = ['./', 'index.html', 'app.js', 'engines.js', 'engine-worklet.js', 'drive-model.js'];
+const CACHE = 'firing-order-v7';
+const CORE = ['./', 'index.html', 'app.js', 'engines.js', 'engine-worklet.js', 'drive-model.js', 'engines-fitted.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

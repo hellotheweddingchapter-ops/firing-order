@@ -1,0 +1,220 @@
+{
+ "changed": {
+  "pulse.lambdaFull": [
+   0.28,
+   0.196
+  ],
+  "pulse.spanDeg": [
+   140,
+   260
+  ],
+  "pulse.nu": [
+   0.75,
+   1
+  ],
+  "tail.ms": [
+   6.5,
+   8.45
+  ],
+  "tail.mix": [
+   0.35,
+   0.455
+  ],
+  "pipeFb": [
+   -0.55,
+   -0.385
+  ],
+  "runnerFb": [
+   -0.35,
+   -0.3867
+  ],
+  "muffler.0.f": [
+   160,
+   78.4
+  ],
+  "muffler.0.g": [
+   0.8,
+   1.0884
+  ],
+  "muffler.1.f": [
+   520,
+   442
+  ],
+  "muffler.1.g": [
+   0.6,
+   0.483
+  ],
+  "muffler.2.g": [
+   0.4,
+   0.196
+  ],
+  "mufflerDirect": [
+   0.5,
+   0.35
+  ],
+  "tone.rpm": [
+   0.45,
+   0.585
+  ],
+  "rasp": [
+   0.25,
+   0.6316
+  ],
+  "intake.hz": [
+   520,
+   878.8
+  ],
+  "intake.roar": [
+   0.35,
+   0.455
+  ],
+  "mech.noise": [
+   0.06,
+   0.0546
+  ],
+  "banks.1.gain": [
+   1,
+   1.3
+  ],
+  "cylSpread": [
+   1,
+   1.3
+  ]
+ },
+ "cfg": {
+  "idle": 900,
+  "redline": 9000,
+  "firing": [
+   {
+    "deg": 0,
+    "bank": 0,
+    "runnerMs": 0.86,
+    "gain": 1
+   },
+   {
+    "deg": 120,
+    "bank": 1,
+    "runnerMs": 0.9557368677792635,
+    "gain": 0.974
+   },
+   {
+    "deg": 240,
+    "bank": 0,
+    "runnerMs": 0.8647011812172497,
+    "gain": 1.026
+   },
+   {
+    "deg": 360,
+    "bank": 1,
+    "runnerMs": 0.8406355654383083,
+    "gain": 0.987
+   },
+   {
+    "deg": 480,
+    "bank": 0,
+    "runnerMs": 0.9865341033207741,
+    "gain": 1.013
+   },
+   {
+    "deg": 600,
+    "bank": 1,
+    "runnerMs": 0.8451640479051218,
+    "gain": 0.974
+   }
+  ],
+  "banks": [
+   {
+    "pipeMs": 4.2,
+    "pan": -0.3
+   },
+   {
+    "pipeMs": 4.5,
+    "pan": 0.3,
+    "gain": 1.3
+   }
+  ],
+  "pulse": {
+   "spanDeg": 260,
+   "minMs": 0.9,
+   "maxMs": 6,
+   "attack": 70,
+   "decay": 6,
+   "nu": 1,
+   "lambdaLight": 1,
+   "lambdaFull": 0.196
+  },
+  "runnerFb": -0.38675,
+  "pipeFb": -0.385,
+  "pipeA": 0.55,
+  "pipeB": 0.4,
+  "tail": {
+   "ms": 8.450000000000001,
+   "fb": -0.45,
+   "mix": 0.45499999999999996
+  },
+  "muffler": [
+   {
+    "f": 78.39999999999999,
+    "q": 1.2,
+    "g": 1.08836
+   },
+   {
+    "f": 442,
+    "q": 1.8,
+    "g": 0.48299999999999993
+   },
+   {
+    "f": 1400,
+    "q": 1.4,
+    "g": 0.19599999999999998
+   }
+  ],
+  "mufflerDirect": 0.35,
+  "valve": {
+   "rpm": 4500,
+   "load": 0.75,
+   "closedHz": 1200,
+   "closedGain": 0.6
+  },
+  "tone": {
+   "base": 1200,
+   "load": 4000,
+   "rpm": 0.5850000000000001
+  },
+  "rasp": 0.6316375000000001,
+  "intake": {
+   "gain": 0.9,
+   "hz": 878.8000000000001,
+   "q": 1.6,
+   "runnerMs": 1.6,
+   "flapRpm": 5600,
+   "flapHz": 780,
+   "roar": 0.45499999999999996
+  },
+  "mech": {
+   "click": 0.12,
+   "noise": 0.054599999999999996
+  },
+  "turbo": null,
+  "timingJitterDeg": 0.6,
+  "overrunAir": 0.18,
+  "cabin": {
+   "exhaust": 0.9,
+   "intake": 1.5,
+   "mech": 1.2,
+   "block": 1.1,
+   "leak": 0.16
+  },
+  "cabinGain": 1.25,
+  "crackle": 0.04,
+  "jitter": 0.025,
+  "turb": 0.15,
+  "noise": 0.15,
+  "blockHz": 160,
+  "blockGain": 0.7,
+  "exhaustGain": 1.25,
+  "drive": 1.2,
+  "starterHz": 420,
+  "cylSpread": 1.3
+ }
+}
