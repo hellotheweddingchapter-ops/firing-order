@@ -20,6 +20,8 @@ Checked against real engines: about 0.3-0.45 bar manifold pressure at light crui
 
 It runs at about 6-11x real time. A quick speed check when you start the engine falls back to the Classic sound if the screen's computer is too slow. Settings → Engine sound switches between the two.
 
+**Engine view** (the button next to settings): the simulated engine drawn live: pistons, rods and cranks, valves opening, the gas heating and burning, each cylinder's pressure, a full-cycle pressure trace for the cylinder you tap, and the pressure waves travelling through the exhaust. It runs the same simulation as the sound, with the same revs, throttle, boost and lift-off, slowed down so one engine cycle takes 2 s (or 7 s).
+
 ## Run it
 
 ```
@@ -58,6 +60,7 @@ The browser can't see the pedal, so everything comes from GPS speed:
 ## Files
 
 - `engine-physics.js`: the simulated engine (cylinders, valves, combustion, exhaust waves)
+- `engine-view.js`: the engine view
 - `engine-worklet.js`: the audio worklet: runs the simulated engine (or the classic synthesis), turbo, gearbox, pops and the cabin model
 - `engines.js`: per-engine firing order, exhaust layout, gear ratios, tuning values
 - `drive-model.js`: Tesla model, GPS Kalman filter, load inference, test drive

@@ -125,6 +125,8 @@ class PhysCore {
   buildExhaust(X, firing) {
     const sr = this.sr, T = (l, d, o) => { const t = new Tube(l, d, sr, o); this.tubes.push(t); return t; };
     this.tubes = []; this.junctions = []; this.ports = []; this.tails = [];
+    // Layout of the network, kept for the engine view: per bank, then the shared rear section.
+    this.layout = { banks: [], rear: [] };
     const banks = [...new Set(firing.map((f) => f.bank || 0))];
     const bankOut = {};
     for (const b of banks) {
@@ -154,6 +156,10 @@ class PhysCore {
         last = dp;
       }
       bankOut[b] = { t: last, bank: b };
+      this.layout.banks.push({ bank: b, cyls: members.map(([, i]) => i), runners,
+        secondaries: X.pairs && runners.length === 4 ? this.tubes.slice(this.tubes.length - (X.turbine ? 5 : 3), this.tubes.length - (X.turbine ? 3 : 1)) : null,
+        collector: X.turbine ? this.tubes[this.tubes.length - 3] : last,
+        turbine: X.turbine ? this.tubes[this.tubes.length - 2] : null, downpipe: X.turbine ? last : null });
       this.bankJ = this.bankJ || [];
       this.bankJ[b] = this.junctions.find((j) => j.ends.some(([t, s]) => t === bankOut[b].t && s === 0)) || this.junctions[this.junctions.length - 1];
     }
@@ -168,17 +174,18 @@ class PhysCore {
       const outs = this.tails.slice(-(X.tips ?? 1)).map((x) => [x.t, 0]);
       this.junctions.push(new Junction([[box, 1], [by, 1], ...outs]));
       this.bypass = this.bypass || []; this.bypass.push(by);
+      return { box, bypass: by, tails: this.tails.slice(-(X.tips ?? 1)).map((x) => x.t) };
     };
     const outs = Object.values(bankOut);
     if (outs.length > 1 && X.merge) {
       const mid = T(X.mid, X.midD);
       this.junctions.push(new Junction([...outs.map((o) => [o.t, 1]), [mid, 0]]));
-      silencer(mid, 0);
+      this.layout.rear.push({ banks: outs.map((o) => o.bank), mid, ...silencer(mid, 0) });
     } else {
       outs.forEach((o, k) => {
         const mid = T(X.mid, X.midD);
         this.junctions.push(new Junction([[o.t, 1], [mid, 0]]));
-        silencer(mid, outs.length > 1 ? (k ? 0.5 : -0.5) : 0);
+        this.layout.rear.push({ banks: [o.bank], mid, ...silencer(mid, outs.length > 1 ? (k ? 0.5 : -0.5) : 0) });
       });
     }
   }
@@ -226,6 +233,7 @@ class PhysCore {
         if (c.Vprev === undefined) { c.Vprev = V; c.m = PATM * V / (PR * TAMB); c.prev = th; } // start at ambient, wherever the piston is
         const dV = V - c.Vprev; c.Vprev = V;
         const p = c.m * PR * c.T / V;
+        if (this.record) { c.trace = c.trace || new Float32Array(360); c.trace[(th / 2) | 0] = p; c.th = th; c.p = p; c.lift = [Ai, Ae]; }
         const mi = Ai > 0 ? orifice(Ai, pPl, Tpl, p, c.T) : 0;
         const me = Ae > 0 ? this.portFlow(Ae, p, c.T, this.ports[i]) : 0;
         // Intake valve closing: the charge is trapped, fuel is metered, spark is set.
@@ -332,6 +340,12 @@ class PhysCore {
       if (gm > 0) { hi = m; ghi = gm; } else { lo = m; glo = gm; }
     }
     return (lo * ghi - hi * glo) / (ghi - glo);
+  }
+
+  // Pressure along a pipe at fraction u from its start (Pa above ambient): forward wave plus backward wave.
+  pipePressure(t, u) {
+    const d = t.base * this.texScale;
+    return t.f.read(Math.max(1, u * d)) + t.b.read(Math.max(1, (1 - u) * d));
   }
 
   // Overrun crackle: a pressure kick at a bank's collector.

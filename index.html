@@ -263,6 +263,38 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   .pedals { grid-column: 1 / -1; }
   .eng { display: none; }
 }
+
+/* ---------- engine view ---------- */
+.ev { position: fixed; inset: 0; z-index: 15; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.ev-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ev-title { display: grid; gap: 4px; min-width: 0; }
+.ev-title h2 { margin: 0; font: italic 800 24px/1 var(--font-num); }
+.ev-ctrl { display: flex; gap: 10px; align-items: center; }
+.ev-ctrl .seg button { min-height: 40px; padding-inline: 14px; }
+.ev-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 10px; min-height: 0; }
+.ev-box { padding: 10px 12px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; min-height: 0; min-width: 0; }
+.ev-box canvas { width: 100%; height: 100%; display: block; min-height: 0; }
+.ev-tr { grid-template-rows: auto minmax(0, 1fr) auto; }
+.ev-tr-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ev-tr-head select { width: auto; min-height: 34px; padding-inline: 10px; font-size: 13px; }
+.ev-ex { grid-column: 1 / -1; }
+.ev-scale { margin-left: 10px; display: inline-flex; gap: 6px; align-items: center; letter-spacing: 0.06em; }
+.ev-scale i { display: inline-block; width: 18px; height: 6px; border-radius: 3px; }
+.ev-scale .neg { background: rgb(70,110,255); } .ev-scale .zero { background: rgb(90,90,100); } .ev-scale .pos { background: rgb(255,150,40); }
+.ev-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ev-stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.ev-stats div { display: grid; gap: 3px; }
+.ev-stats b { font: 700 20px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+.ev-stats b small { font: 600 11px/1 var(--font-ui); color: var(--dim); margin-left: 3px; }
+.ev-note { margin: 0; font-size: 13px; color: var(--dim); }
+#evCyls { cursor: pointer; }
+@media (max-width: 640px), (orientation: portrait) and (max-width: 900px) {
+  .ev { overflow: auto; grid-template-rows: auto auto auto; }
+  .ev-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 260px 200px 180px; }
+  .ev-ex { grid-column: auto; }
+}
+
 @media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; } }
 </style>
 </head>
@@ -276,6 +308,9 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
     <div class="lights" id="lights" aria-hidden="true"></div>
     <div class="top-right">
       <span class="src" id="srcChip">Simulator</span>
+      <button class="icon-btn" id="viewBtn" type="button" aria-label="Engine view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="9" rx="1"/><path d="M12 12v4"/><circle cx="12" cy="18" r="3"/><path d="M9 6h6"/></svg>
+      </button>
       <button class="icon-btn" id="menuBtn" type="button" aria-label="Settings" aria-controls="drawer" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       </button>
@@ -440,12 +475,36 @@ kbd { font: 600 12px/1 var(--font-ui); border: 1px solid var(--line); border-bot
   </section>
 </aside>
 
+<div id="engineView" class="ev" hidden>
+  <header class="ev-head">
+    <div class="ev-title"><h2 id="evTitle">Engine</h2><span id="evSub" class="cap"></span></div>
+    <div class="ev-ctrl">
+      <div class="seg" role="group" aria-label="Slow motion">
+        <button type="button" data-slow="2.2" aria-pressed="true">Slow</button>
+        <button type="button" data-slow="7" aria-pressed="false">Very slow</button>
+      </div>
+      <button class="icon-btn" id="evClose" type="button" aria-label="Close engine view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </header>
+  <div class="ev-grid">
+    <section class="panel ev-box ev-cyl"><span class="cap">Cylinders · tap one to trace it</span><canvas id="evCyls"></canvas></section>
+    <section class="panel ev-box ev-tr">
+      <div class="ev-tr-head"><span class="cap">Cylinder pressure, one cycle</span><select id="evCyl" aria-label="Cylinder to trace"></select></div>
+      <canvas id="evTrace"></canvas>
+      <div class="legend"><span><i class="sw" style="background: var(--accent)"></i>Exhaust valve open</span><span><i class="sw" style="background: var(--blue)"></i>Intake valve open</span></div>
+    </section>
+    <section class="panel ev-box ev-ex"><span class="cap">Exhaust · pressure waves in the pipes <span class="ev-scale"><i class="neg"></i>suction <i class="zero"></i>ambient <i class="pos"></i>pulse</span></span><canvas id="evExhaust"></canvas></section>
+  </div>
+  <footer class="ev-foot"><div class="ev-stats" id="evStats"></div><p class="ev-note" id="evNote"></p></footer>
+</div>
+
 <div id="toast" role="status" hidden></div>
 
-<script src="engines.js?v=9"></script>
-<script src="engines-fitted.js?v=9"></script>
-<script src="drive-model.js?v=9"></script>
-<script src="engine-physics.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="engines.js?v=10"></script>
+<script src="engines-fitted.js?v=10"></script>
+<script src="drive-model.js?v=10"></script>
+<script src="engine-physics.js?v=10"></script>
+<script src="app.js?v=10"></script>
+<script src="engine-view.js?v=10"></script>
 </body>
 </html>
